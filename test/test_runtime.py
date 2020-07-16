@@ -99,3 +99,17 @@ def test_tell_eq():
     assert store.tell_eq(z, 2)
 
     assert store.ask_eq(x, (y, z), e_vars=set([x]))
+
+
+def test_logic_variable():
+    trail = []
+    x = rt.LogicVariable('x', trail)
+    y = rt.LogicVariable('y', trail)
+    assert rt.unify(x, 1)
+    assert x.is_bound()
+    assert rt.unify(x, y)
+    assert y.get_value() == 1
+    z = rt.LogicVariable('z', trail)
+    assert rt.unify(z, (x,y))
+    assert z.get_value() == (1,1)
+    assert rt.unify(z, (1,1))

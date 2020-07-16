@@ -44,101 +44,145 @@ class CHRStore:
         return self.constraints.items()
 
 
-def apply_substitution(subst, term):
-    if isinstance(term, Hashable) and term in subst:
-        return apply_substitution(subst, subst[term])
+def unify(left, right):
+    if isinstance(left, LogicVariable):
+        if left.is_bound():
+            return unify(left.get_value(), right)
 
-    if type(term) is list:
-        return [
-            apply_substitution(subst, subterm)
-            for subterm in term
-        ]
+        return left.set_value(right)
 
-    if type(term) is tuple:
-        return tuple(
-            apply_substitution(subst, subterm)
-            for subterm in term
-        )
+    if isinstance(right, LogicVariable):
+        if right.is_bound():
+            return unify(right.get_value(), left)
 
-    if type(term) is dict:
-        return {
-            key: apply_substitution(subst, value)
-            for key, value in term.items()
-        }
+        return right.set_value(left)
 
-    return term
+    if type(left) != type(right):
+        return False
 
+    if type(left) in [list, tuple] and type(right) in [list, tuple]:
+        for l, r in zip(left, right):
+            if not unify(l, r):
+                return False
 
-def merge_substitution(subst1, subst2, variables):
-    result = subst1
-    for key, val in subst2.items():
-        if key in result:
-            unifier = unify(val, result[key], variables)
-            if unifier == None:
-                return None
-            result[key] = apply_substitution(unifier, val)
-            result.update(unifier)
-        else:
-            result[key] = val
-    return result
+    if type(left) is dict and type(right) is dict:
+        for l, r in zip(left.items(), right.items()):
+            if not unify(l, r):
+                return False
+
+    return left == right
 
 
-def unify(x, y, vars):
+class LogicVariable:
+    def __init__(self, name, trail, value=None):
+        self.value = value
+        self.name = name
+        self.trail = trail
+        self.delayed = []
 
-    if isinstance(x, Hashable) and x in vars:
-        return {x: y}
+    def occurs_check(self, term):
+        if term == self:
+            return True
 
-    if isinstance(y, Hashable) and y in vars:
-        return {y: x}
+        if type(term) in [list, tuple]:
+            for subterm in term:
+                if self.occurs_check(subterm):
+                    return True
 
-    if type(x) != type(y):
-        return None
+        if type(term) is dict:
+            for subterm in term.values():
+                if self.occurs_check(subterm):
+                    return True
 
-    if type(x) in [list, tuple] and type(y) in [list, tuple]:
-        if len(x) != len(y):
+        return False
+
+    def unset(self):
+        self.value = None
+
+    def delay(self, callable):
+        self.delayed.append(callable)
+
+    def set_value(self, value):
+        if self.occurs_check(value):
+            raise Exception(f'{self} occurs in {value}')
+
+        if self.is_bound():
+            return False
+
+        if self.value == None:
+            self.value = value
+            self.trail.append(self)
+            for callable in self.delayed:
+                callable()
+            return True
+
+        if isinstance(self.value, LogicVariable):
+            return self.value.set_value(value)
+
+        return False
+
+
+    def get_value(self):
+        if self.value == None:
             return None
 
-        subst = {}
-        for a, b in zip(x,y):
-            u = unify(a, b, vars)
-            if u == None:
-                return None
-            subst = merge_substitution(subst, u, vars)
+        if isinstance(self.value, LogicVariable):
+            return self.value.get_value()
 
-        return subst
+        if type(self.value) is list:
+            return [
+                term.get_value() if isinstance(term, LogicVariable) else term
+                for term in self.value
+            ]
 
-    if type(x) is dict and type(y) is dict:
-        if x.keys() != y.keys():
-            return None
+        if type(self.value) is tuple:
+            return tuple(
+                term.get_value() if isinstance(term, LogicVariable) else term
+                for term in self.value
+            )
 
-        subst = {}
-        for ka, a in x.items():
-            u = unify(a, y[ka], vars)
-            if u == None:
-                return None
-            subst = merge_substitution(subst, u, vars)
+        if type(self.value) is dict:
+            return {
+                key: term.get_value() if isinstance(term, LogicVariable) else term
+                for key, term in self.value.items()
+            }
 
-        return subst
+        return self.value
 
-    if x == y:
-        return {}
+
+    def is_bound(self):
+        if self.value == None:
+            return False
+
+        if isinstance(self.value, LogicVariable):
+            return self.value.bound()
+
+        return True
+
+    def __str__(self):
+        if self.is_bound():
+            return str(self.value)
+
+        return self.name
+
+    def __repr__(self):
+        return str(self)
 
 
 class BuiltInStore:
 
     def __init__(self):
-        self.subst = {}
-        self.varset = set()
+        self.vars = {}
         self.next_fresh_var = 0
-        self.delays = {}
+        self.trail = []
 
 
-    def fresh(self, name=None, existential=False):
+    def fresh(self, name=None):
         if name and name.startswith("_"):
             raise Exception("user variables must not begin with '_'")
 
         if name:
-            if name in self.varset:
+            if name in self.vars:
                 var_name = f'_{name}{self.next_fresh_var}'
                 self.next_fresh_var += 1
             else:
@@ -148,28 +192,16 @@ class BuiltInStore:
             var_name = f'_VAR{self.next_fresh_var}'
             self.next_fresh_var += 1
 
-        # self.subst[var_name] = None
-        if not existential:
-            self.varset.add(var_name)
-        return var_name
+        return LogicVariable(var_name, self.trail)
 
 
-    def delay(self, to_call, *vars):
+    def delay(self, callable, *vars):
         for var in vars:
-            if var in self.delays and self.delays[var]:
-                self.delays[var].append(to_call)
-            else:
-                self.delays[var] = [to_call]
+            var.delay(callable)
 
 
-    def ask_eq(self, x, y, subst={}, e_vars=set()):
-        vars = e_vars.union(self.varset)
-        u = unify(x, y, vars)
-        if u == None:
-            return None
-
-        merged = merge_substitution(subst if subst else self.subst, u, vars)
-        return merged
+    def ask_eq(self, x, y):
+        return unify(x,y)
 
 
     def tell_eq(self, x, y):
