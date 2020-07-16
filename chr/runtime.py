@@ -73,11 +73,11 @@ def merge_substitution(subst1, subst2, variables):
     result = subst1
     for key, val in subst2.items():
         if key in result:
-            unifier = unify(variables, val, result[key])
+            unifier = unify(val, result[key], variables)
             if unifier == None:
-                return False
-            else:
-                result[key] = apply_substitution(unifier, value)
+                return None
+            result[key] = apply_substitution(unifier, val)
+            result.update(unifier)
         else:
             result[key] = val
     return result
@@ -127,25 +127,64 @@ def unify(x, y, vars):
 class BuiltInStore:
 
     def __init__(self):
-        self.vars = {}
+        self.subst = {}
         self.varset = set()
         self.next_fresh_var = 0
+        self.delays = {}
 
-    def fresh(self, name=None):
-        if name.startswith("_"):
+
+    def fresh(self, name=None, existential=False):
+        if name and name.startswith("_"):
             raise Exception("user variables must not begin with '_'")
 
         if name:
-            if name in self.vars:
-                var_name = f'_{name}{self.next_var}'
+            if name in self.varset:
+                var_name = f'_{name}{self.next_fresh_var}'
                 self.next_fresh_var += 1
             else:
                 var_name = name
 
         else:
-            var_name = f'_VAR{self.next_var}'
-            self.next_var += 1
+            var_name = f'_VAR{self.next_fresh_var}'
+            self.next_fresh_var += 1
 
-        self.vars[var_name] = None
-        self.varset.add(var_name)
+        # self.subst[var_name] = None
+        if not existential:
+            self.varset.add(var_name)
         return var_name
+
+
+    def delay(self, to_call, *vars):
+        for var in vars:
+            if var in self.delays and self.delays[var]:
+                self.delays[var].append(to_call)
+            else:
+                self.delays[var] = [to_call]
+
+
+    def ask_eq(self, x, y, subst={}, e_vars=set()):
+        vars = e_vars.union(self.varset)
+        u = unify(x, y, vars)
+        if u == None:
+            return None
+
+        merged = merge_substitution(subst if subst else self.subst, u, vars)
+        return merged
+
+
+    def tell_eq(self, x, y):
+        u = unify(x, y, self.varset)
+        if u == None:
+            return False
+
+        subst = merge_substitution(self.subst, u, self.varset)
+        if subst == None:
+            return False
+
+        for key, calls in self.delays:
+            if self.subst[key] != subst[key]:
+                for call in calls:
+                    call()
+
+        self.subst = subst
+        return True
