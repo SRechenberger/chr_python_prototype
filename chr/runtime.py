@@ -41,7 +41,7 @@ class CHRStore:
             raise Exception(f'constraint with id {id} unknown')
 
     def get_iterator(self):
-        return self.constraints.items()
+        return list(self.constraints.items())
 
 
 def unify(left, right):
@@ -196,7 +196,7 @@ class BuiltInStore:
         self.trail = []
 
 
-    def fresh(self, name=None):
+    def fresh(self, name=None, value=None):
         if name and name.startswith("_"):
             raise Exception("user variables must not begin with '_'")
 
@@ -211,7 +211,7 @@ class BuiltInStore:
             var_name = f'_VAR{self.next_fresh_var}'
             self.next_fresh_var += 1
 
-        return LogicVariable(var_name, self.trail)
+        return LogicVariable(var_name, self.trail, value=value)
 
 
     def delay(self, callable, *vars):
