@@ -45,60 +45,53 @@ def test_delete_constraint():
     assert (c, 'c') not in store.get_iterator()
 
 
-def test_apply_substitution():
-    subst = {'$a': 1, '$b': '$c', '$c': 3}
-
-    tests = [
-        ('$a', 1),
-        ('$b', 3),
-        (('$a', '$b', '$c'), (1, 3, 3)),
-        (['$a', '$c', '$b'], [1, 3, 3]),
-        ({1: '$a', 2: '$b', 3: '$c'}, {1:1, 2:3, 3:3}),
-        (subst, {'$a': 1, '$b': 3, '$c': 3})
-    ]
-
-    for i, o in tests:
-        assert rt.apply_substitution(subst, i) == o
-
 def test_unification():
-    vars = set(['$a', '$b'])
+    store = rt.BuiltInStore()
+    a = store.fresh()
+    b = store.fresh()
+    c = store.fresh()
     terms = [
-        ('$a', 1),
-        ('$b', '$c'),
+        (a, 2),
+        (b, c),
+        (c, 1),
         (1,1),
-        (['$a', 1], [2, '$b']),
-        (('$a', 1), (2, '$b')),
-        ({1: '$a', 2: 1}, {1: 2, 2: '$b'})
+        ([a, 1], [2, b]),
+        ((a, 1), (2, b)),
+        ({1: a, 2: 1}, {1: 2, 2: b})
     ]
 
     for term1, term2 in terms:
-        u = rt.unify(term1, term2, vars)
-        assert u != None
+        rt.unify(term1, term2)
 
-        t1 = rt.apply_substitution(u, term1)
-        t2 = rt.apply_substitution(u, term2)
-        assert t1
-        assert t2
-        assert t1 == t2
+        assert term1 == term2
+
 
 def test_ask_eq():
     store = rt.BuiltInStore()
-    test_subst = {'X': (1, 2), 'Y': (1, 3)}
-    answer = store.ask_eq((1, 'N'), 'X', test_subst, e_vars=set(['X', 'Y', 'N']))
 
-    print(answer)
-    assert answer == {'X': (1, 2), 'Y': (1, 3), 'N': 2}
+    x = store.fresh()
+    y = store.fresh()
+    z = store.fresh()
+
+    assert rt.unify(x, (1, 2))
+    assert rt.unify(y, (1, 3))
+    assert rt.unify((1, z), x)
+
+    assert z == 2
+
 
 def test_tell_eq():
     store = rt.BuiltInStore()
-    x = store.fresh(existential=True)
+    x = store.fresh()
     y = store.fresh()
     z = store.fresh()
 
     assert store.tell_eq(y, 1)
     assert store.tell_eq(z, 2)
 
-    assert store.ask_eq(x, (y, z), e_vars=set([x]))
+    assert store.tell_eq(x, (y, z))
+
+    assert x == (1, 2)
 
 
 def test_logic_variable():

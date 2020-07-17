@@ -149,13 +149,19 @@ class LogicVariable:
 
         return self.value
 
+    def find_repr(self):
+        if isinstance(self.value, LogicVariable):
+            return self.value.find_repr()
+
+        return self
+
 
     def is_bound(self):
         if self.value == None:
             return False
 
         if isinstance(self.value, LogicVariable):
-            return self.value.bound()
+            return self.value.is_bound()
 
         return True
 
@@ -167,6 +173,19 @@ class LogicVariable:
 
     def __repr__(self):
         return str(self)
+
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+
+        if isinstance(other, LogicVariable):
+            return self.find_repr() is other.find_repr()
+
+        if self.is_bound():
+            return self.get_value() == other
+
+        return False
 
 
 class BuiltInStore:
@@ -201,22 +220,8 @@ class BuiltInStore:
 
 
     def ask_eq(self, x, y):
-        return unify(x,y)
+        return x == y
 
 
     def tell_eq(self, x, y):
-        u = unify(x, y, self.varset)
-        if u == None:
-            return False
-
-        subst = merge_substitution(self.subst, u, self.varset)
-        if subst == None:
-            return False
-
-        for key, calls in self.delays:
-            if self.subst[key] != subst[key]:
-                for call in calls:
-                    call()
-
-        self.subst = subst
-        return True
+        return unify(x, y)
