@@ -40,8 +40,13 @@ class CHRStore:
         else:
             raise Exception(f'constraint with id {id} unknown')
 
-    def get_iterator(self):
-        return list(self.constraints.items())
+    def get_iterator(self, symbol=None, fix=False):
+        it = self.constraints.items()
+        if symbol:
+            it = filter(lambda c: c[1][0] == symbol, it)
+        if fix:
+            it = list(it)
+        return it
 
 
 def unify(left, right):
@@ -113,6 +118,7 @@ class LogicVariable:
             self.value = value
             self.trail.append(self)
             for callable in self.delayed:
+                print("callable on", self.name)
                 callable()
             return True
 
