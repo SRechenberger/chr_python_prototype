@@ -96,25 +96,25 @@ class IterativeSolver:
             new_constraint = (GCD_1_SYMBOL, *vars)
             new_id = self.chr.new()
             self.chr.insert(new_constraint, new_id)
-            self.activate_gcd(new_id, *vars)
+            self.__activate_gcd(new_id, *vars)
 
         else:
             raise Exception(f"constraint {GCD_SYMBOL}/{len(args)} not defined")
 
 
-    def activate_gcd(self, id, x):
-        if self.gcd_1(id, x):
+    def __activate_gcd(self, id, x):
+        if self.__gcd_1(id, x):
             return
-        if self.gcd_2(id, x):
+        if self.__gcd_2(id, x):
             return
-        if self.gcd_3(id, x):
+        if self.__gcd_3(id, x):
             return
 
         if not x.is_bound():
-            self.builtin.delay(lambda: self.activate_gcd(id, x), x)
+            self.builtin.delay(lambda: self.__activate_gcd(id, x), x)
 
 
-    def gcd_1(self, id, x):
+    def __gcd_1(self, id, x):
         if self.chr.alive(id):
             if x.get_value() == 0 and not self.chr.in_history("r0", id):
                 self.chr.add_to_history("r0", id)
@@ -123,7 +123,7 @@ class IterativeSolver:
         return False
 
 
-    def gcd_2(self, id, x):
+    def __gcd_2(self, id, x):
         for j, c in self.chr.get_iterator(symbol=GCD_1_SYMBOL, fix=True):
             if j != id:
                 if self.chr.alive(id) and self.chr.alive(j):
@@ -137,12 +137,12 @@ class IterativeSolver:
                             new_var = self.builtin.fresh(value=n-m)
                             new_constraint = (GCD_1_SYMBOL, new_var)
                             self.chr.insert(new_constraint, new_id)
-                            self.activate_gcd(new_id, new_var)
+                            self.__activate_gcd(new_id, new_var)
                             return True
         return False
 
 
-    def gcd_3(self, id, x):
+    def __gcd_3(self, id, x):
         print("gcd/1_3", id, x)
         for j, c in self.chr.get_iterator(symbol=GCD_1_SYMBOL, fix=True):
             if j != id:
@@ -157,7 +157,7 @@ class IterativeSolver:
                             new_var = self.builtin.fresh(value=n-m)
                             new_constraint = (GCD_1_SYMBOL, new_var)
                             self.chr.insert(new_constraint, new_id)
-                            self.activate_gcd(new_id, new_var)
+                            self.__activate_gcd(new_id, new_var)
                             if not self.chr.alive(id):
                                 return True
         return False
