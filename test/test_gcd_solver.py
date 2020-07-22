@@ -72,8 +72,11 @@ class RecursiveSolver:
 
 
 
+GCD_SYMBOL = "gcd"
+GCD_1_SYMBOL = f"{GCD_SYMBOL}/1"
 
 class IterativeSolver:
+
 
     def __init__(self):
         self.builtin = rt.BuiltInStore()
@@ -84,20 +87,22 @@ class IterativeSolver:
         return self.builtin.fresh(name=name)
 
 
-    def gcd(self, x):
-        print("gcd", x)
-        if isinstance(x, rt.LogicVariable):
-            var_x = x
+    def gcd(self, *args):
+        if len(args) == 1:
+            vars = [
+                arg if isinstance(arg, rt.LogicVariable) else self.builtin.fresh(value=args[0])
+                for arg in args
+            ]
+            new_constraint = (GCD_1_SYMBOL, *vars)
+            new_id = self.chr.new()
+            self.chr.insert(new_constraint, new_id)
+            self.activate_gcd(new_id, *vars)
+
         else:
-            var_x = self.builtin.fresh(value=x)
-        new_constraint = ("gcd", var_x)
-        new_id = self.chr.new()
-        self.chr.insert(new_constraint, new_id)
-        self.activate_gcd(new_id, var_x)
+            raise Exception(f"constraint {GCD_SYMBOL}/{len(args)} not defined")
 
 
     def activate_gcd(self, id, x):
-        print("activate_gcd", id, x)
         if self.gcd_1(id, x):
             return
         if self.gcd_2(id, x):
@@ -110,48 +115,47 @@ class IterativeSolver:
 
 
     def gcd_1(self, id, x):
-        print("gcd_1", id, x)
         if self.chr.alive(id):
-            if x.get_value() == 0:
+            if x.get_value() == 0 and not self.chr.in_history("r0", id):
+                self.chr.add_to_history("r0", id)
                 self.chr.delete(id)
-                if not self.chr.alive(id):
-                    return True
+                return True
         return False
 
 
     def gcd_2(self, id, x):
-        print("gcd_2", id, x)
-        for j, c in self.chr.get_iterator(symbol="gcd", fix=True):
+        for j, c in self.chr.get_iterator(symbol=GCD_1_SYMBOL, fix=True):
             if j != id:
                 if self.chr.alive(id) and self.chr.alive(j):
                     if c[1].is_bound() and x.is_bound():
                         m = c[1].get_value()
                         n = x.get_value()
-                        if m <= n:
+                        if m <= n and not self.chr.in_history("r1", id, j):
+                            self.chr.add_to_history("r1", id, j)
                             self.chr.delete(id)
                             new_id = self.chr.new()
                             new_var = self.builtin.fresh(value=n-m)
-                            new_constraint = ("gcd", new_var)
+                            new_constraint = (GCD_1_SYMBOL, new_var)
                             self.chr.insert(new_constraint, new_id)
                             self.activate_gcd(new_id, new_var)
-                            if not self.chr.alive(id):
-                                return True
+                            return True
         return False
 
 
     def gcd_3(self, id, x):
-        print("gcd_3", id, x)
-        for j, c in self.chr.get_iterator(symbol="gcd", fix=True):
+        print("gcd/1_3", id, x)
+        for j, c in self.chr.get_iterator(symbol=GCD_1_SYMBOL, fix=True):
             if j != id:
                 if self.chr.alive(id) and self.chr.alive(j):
                     if x.is_bound() and c[1].is_bound():
                         m = x.get_value()
                         n = c[1].get_value()
-                        if m <= n:
+                        if m <= n and not self.chr.in_history("r1", id, j):
+                            self.chr.add_to_history("r1", id, j)
                             self.chr.delete(j)
                             new_id = self.chr.new()
                             new_var = self.builtin.fresh(value=n-m)
-                            new_constraint = ("gcd", new_var)
+                            new_constraint = (GCD_1_SYMBOL, new_var)
                             self.chr.insert(new_constraint, new_id)
                             self.activate_gcd(new_id, new_var)
                             if not self.chr.alive(id):
@@ -165,7 +169,7 @@ def test_gcd_iterative_solver():
     solver.gcd(100)
     solver.gcd(89)
 
-    assert ('gcd', 1) in list(zip(*solver.chr.get_iterator()))[1]
+    assert ('gcd/1', 1) in list(zip(*solver.chr.get_iterator()))[1]
 
 
 def test_delay():
@@ -175,14 +179,14 @@ def test_delay():
         p = solver.builtin.fresh()
         solver.gcd(n)
         solver.gcd(m)
-        assert ('gcd', m) in list(zip(*solver.chr.get_iterator()))[1]
-        assert ('gcd', n) in list(zip(*solver.chr.get_iterator()))[1]
+        assert ('gcd/1', m) in list(zip(*solver.chr.get_iterator()))[1]
+        assert ('gcd/1', n) in list(zip(*solver.chr.get_iterator()))[1]
         solver.gcd(p)
         solver.builtin.tell_eq(m, 2*3*3*5)
         solver.builtin.tell_eq(n, 3*5*7)
-        assert ('gcd', 3*5) in list(zip(*solver.chr.get_iterator()))[1]
+        assert ('gcd/1', 3*5) in list(zip(*solver.chr.get_iterator()))[1]
         solver.builtin.tell_eq(p, 3*3)
-        assert ('gcd', 3) in list(zip(*solver.chr.get_iterator()))[1]
+        assert ('gcd/1', 3) in list(zip(*solver.chr.get_iterator()))[1]
 
 def test_gcd_rec_solver():
     solver = RecursiveSolver()

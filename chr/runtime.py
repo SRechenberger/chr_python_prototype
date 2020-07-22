@@ -6,6 +6,8 @@ class CHRStore:
         self.next_id = 0
         self.alive_set = {}
         self.constraints = {}
+        self.history = {}
+        self.recently_killed = set()
 
     def new(self):
         id = self.next_id
@@ -13,9 +15,42 @@ class CHRStore:
         self.alive_set[id] = True
         return id
 
+    def add_to_history(self, rule_name, *ids):
+        ids_set = set(ids)
+        if rule_name in self.history:
+            self.history[rule_name].append(ids_set)
+        else:
+            self.history[rule_name] = [ids_set]
+
+    def in_history(self, rule_name, *ids):
+        ids_set = set(ids)
+        if rule_name not in self.history:
+            return False
+
+        delete_ixs = []
+        deleted_set = set()
+        to_return = False
+        for ix, jds_set in enumerate(self.history[rule_name]):
+            killed = jds_set.intersection(self.recently_killed)
+            if len(killed) > 0:
+                deleted_set = deleted_set.union(killed)
+                delete_ixs.append(ix)
+            elif ids_set == jds_set:
+                to_return = True
+                break
+
+        for ix in delete_ixs:
+            del self.history[rule_name][ix]
+
+        self.recently_killed -= deleted_set
+
+        return to_return
+
+
     def kill(self, id):
         if id in self.alive_set:
             self.alive_set[id] = False
+            self.recently_killed.add(id)
         else:
             raise Exception(f'id {id} unknown')
 
