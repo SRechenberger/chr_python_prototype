@@ -38,14 +38,15 @@ class Emitter:
         self.level = 0
         self.indent_padding = indent_padding
         self.indent_factor = indent_factor
+        self.var_idents = {}
 
-    def leave_block(self):
-        self.level -= 1
+    def leave_block(self, n=1):
+        self.level -= n
         if self.level < 0:
             raise Exception("Negative indentation level")
 
-    def enter_block(self):
-        self.level += 1
+    def enter_block(self, n=1):
+        self.level += n
 
     def emit(self, line):
         self.lines.append((self.level, line))
@@ -56,5 +57,28 @@ class Emitter:
             for level, line in self.lines
         ])
 
-    def emit_occurrence(symbol, occurrence_id, i):
-        pass
+    def emit_matching(self, rule, heads, i, j):
+        if heads:
+            (sym, *vars), *hs = heads
+            if j == i:
+                self.emit_heads(rule, hs, i, j+1)
+            else:
+                self.emit("for id_{j}, c_{j} in self.chr.get_enumerator(symbol={sym}, fix=True):")
+                self.enter_block()
+                self.emit_matching(rule, hs, i, j+1)
+                self.leave_block()
+        else:
+            self.emit_body(rule, range(1,j))
+
+
+
+    def emit_occurrence(self, rule, symbol, occurrence_id, i):
+        self.emit(f"def {symbol}_{occurrence_id}(id_{i}, vars_{i}):")
+        self.enter_block()
+        self.emit_matching(
+            rule,
+            rule["kept"] + rule["removed"],
+            i,
+            1
+        )
+        self.leave_block()
