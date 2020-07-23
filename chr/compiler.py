@@ -31,54 +31,66 @@ TEMPLATES = {
     "alive": 'self.chr.alive({ id })'
 }
 
+import ast
+import chr.ast as chrast
+
 class Emitter:
 
-    def __init__(self, indent_padding=' ', indent_factor=4):
-        self.lines = []
-        self.level = 0
-        self.indent_padding = indent_padding
-        self.indent_factor = indent_factor
-        self.var_idents = {}
+    def compile_program(self, program, user_constraints):
+        if not isinstance(program, chrast.Program):
+            raise TypeError(f'{program} is not an instance of {chrast.Program}')
 
-    def leave_block(self, n=1):
-        self.level -= n
-        if self.level < 0:
-            raise Exception("Negative indentation level")
+        processed, _ = program.omega_r()
 
-    def enter_block(self, n=1):
-        self.level += n
+        print(program.rules)
 
-    def emit(self, line):
-        self.lines.append((self.level, line))
+        defs = [
+            self.compile_occurrence(occurrence_scheme)
+            for rule in processed.rules
+            for occurrence_scheme in rule.get_occurrence_schemes()
+        ]
 
-    def render(self):
-        return "\n".join([
-            self.indent_padding * (level * self.indent_factor) + line
-            for level, line in self.lines
-        ])
+        return ast.Module(body=defs)
 
-    def emit_matching(self, rule, heads, i, j):
-        if heads:
-            (sym, *vars), *hs = heads
-            if j == i:
-                self.emit_heads(rule, hs, i, j+1)
-            else:
-                self.emit("for id_{j}, c_{j} in self.chr.get_enumerator(symbol={sym}, fix=True):")
-                self.enter_block()
-                self.emit_matching(rule, hs, i, j+1)
-                self.leave_block()
-        else:
-            self.emit_body(rule, range(1,j))
+    def compile_occurrence(self, occurrence_scheme):
+        if not isinstance(occurrence_scheme, chrast.OccurrenceScheme):
+            raise TypeError(f'{occurrence_scheme} is not an instance of {chrast.OccurrenceScheme}')
 
+        i, c = occurrence_scheme.occurring_constraint
 
+        args = [ast.arg(arg=f'id_{i}', annotation=None)]
+        args += [ast.arg(arg=param, annotation=None) for param in c.params]
 
-    def emit_occurrence(self, rule, symbol, occurrence_id, i):
-        self.emit(f"def {symbol}_{occurrence_id}(id_{i}, vars_{i}):")
-        self.enter_block()
-        self.emit_matching(
-            rule,
-            rule["kept"] + rule["removed"],
-            i,
-            1
+        proc = ast.FunctionDef(
+            name=f'__{c.symbol}_{c.arity}_{c.occurrence_idx}',
+            args=ast.arguments(
+                args=args,
+                defaults=[],
+                vararg=None,
+                kwarg=None
+            ),
+            body=[ast.Pass()],
+            decorator_list=[]
         )
-        self.leave_block()
+
+        return proc
+
+    def emit_occurrence(self, rule, i, symbol, occurrence_id, *variables):
+        args = [ast.arg(arg=f'id_{i}', annotation=None)] + \
+            [ast.arg(arg=var, annotation=None) for var in variables]
+        name = f'{symbol}_{occurrence_id}'
+        body = [
+            ast.Pass()
+        ]
+        proc = ast.FunctionDef(
+            name=name,
+            args=ast.arguments(
+                args=args,
+                defaults=[],
+                vararg=None,
+                kwarg=None
+            ),
+            body=[ast.Pass()],
+            decorator_list=[]
+        )
+        return proc
