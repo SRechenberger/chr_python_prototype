@@ -2,4 +2,4 @@
 
 :- chr_constraint test/1, passed/1.
 
-test(X) <=> X = Y | passed(Y).
+test(X), test(Z) <=> X =< Y, Y =< Z | passed([X,Z]).

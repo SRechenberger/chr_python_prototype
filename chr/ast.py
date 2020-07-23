@@ -14,10 +14,33 @@ class Term:
         return str(self)
 
 
+class Var:
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return f'Var({str(self.name)})'
+
+    def __repr__(self):
+        return repr(self.name)
+
+
+class Const:
+    def __init__(self, val):
+        self.val = val
+
+    def __str__(self):
+        return f'Const({str(self.val)})'
+
+    def __repr__(self):
+        return repr(self.val)
+
+
 class Constraint:
     def __init__(self, symbol, params):
         self.symbol = symbol
         self.params = params
+        self.arity = len(params)
 
     def __str__(self):
         return f'{self.symbol}({", ".join(map(str, self.params))})'
