@@ -52,6 +52,48 @@ class Emitter:
 
         return ast.Module(body=defs)
 
+    def compile_body(self, i, occurrence_scheme, js):
+        return ast.Pass()
+
+    def compile_matching(self, i, others, occurrence_scheme, js):
+        if not others:
+            return self.compile_body(i, occurrence_scheme, js)
+
+        (j, c), *cs = others
+
+        js[j] = c.kept
+
+        loop = ast.For(
+            target=ast.Tuple(elts=[
+                ast.Name(id=f'id_{j}'),
+                ast.Name(id=f'c_{j}')
+            ]),
+            iter=ast.Call(
+                func=ast.Attribute(
+                    value=ast.Attribute(
+                        value=ast.Name(id="self", ctx=ast.Load()),
+                        attr="chr"
+                    ),
+                    attr="get_iterator"
+                ),
+                args=[],
+                keywords=[
+                    ast.keyword(
+                        arg='symbol',
+                        value=ast.Constant(value=f'{c.symbol}/{c.arity}', kind=None)
+                    ),
+                    ast.keyword(
+                        arg='fixed',
+                        value=ast.Constant(value=True, kind=None)
+                    )
+                ]
+            ),
+            body=[self.compile_matching(i, cs, occurrence_scheme, js)],
+            orelse=[]
+        )
+
+        return loop
+
     def compile_occurrence(self, occurrence_scheme):
         if not isinstance(occurrence_scheme, chrast.OccurrenceScheme):
             raise TypeError(f'{occurrence_scheme} is not an instance of {chrast.OccurrenceScheme}')
@@ -69,7 +111,15 @@ class Emitter:
                 vararg=None,
                 kwarg=None
             ),
-            body=[ast.Pass()],
+            body=[
+                self.compile_matching(
+                    i,
+                    occurrence_scheme.other_constraints,
+                    occurrence_scheme,
+                    {}
+                ),
+                ast.Return(ast.Constant(value=False, kind=None))
+            ],
             decorator_list=[]
         )
 
