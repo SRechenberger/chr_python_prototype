@@ -254,7 +254,7 @@ class Emitter:
             value=compile_builtin_call(
                 "fresh",
                 [],
-                kwargs={value=value_ast} if value else []
+                kwargs={"value": value_ast} if value else []
             )
         )
         return varname, stmt
