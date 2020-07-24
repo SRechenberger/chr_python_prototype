@@ -7,7 +7,7 @@ from chr.ast import *
 TEST_PROGRAM = '''
 def __gcd_1_0(id_0, _0):
     if self.chr.alive(id_0):
-        if _0.get_value() == 0:
+        if self.builtin.is_bound(_0) and _0.get_value() == 0:
             pass
     return False
 
@@ -33,7 +33,10 @@ program = Program(rules=[
         name="r1",
         kept_head=[],
         removed_head=[Constraint("gcd", params=["_0"])],
-        guard=[Constraint("ask_eq", params=[Var("_0"), Const(0)])],
+        guard=[
+            Constraint("ask_bound", params=[Var("_0")]),
+            Constraint("ask_eq", params=[Var("_0"), Const(0)])
+        ],
         body=[]
     ),
     Rule(

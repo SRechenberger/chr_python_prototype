@@ -35,6 +35,15 @@ import ast
 import chr.ast as chrast
 from functools import partial
 
+
+def comparison(op, args):
+    return ast.Compare(
+        left = args[0],
+        ops=[op],
+        comparators=[args[1]]
+    )
+
+
 def compile_alive(id):
     return ast.Call(
         func=ast.Attribute(
@@ -48,6 +57,7 @@ def compile_alive(id):
         keywords=[]
     )
 
+
 def compile_all_different(ids):
     return ast.Call(
         func=ast.Name(id="all_different"),
@@ -55,18 +65,20 @@ def compile_all_different(ids):
         keywords=[]
     )
 
+
 def compile_builtin_call(func_id, args):
     return ast.Call(
         func=ast.Attribute(
             value=ast.Attribute(
                 value=ast.Name(id="self"),
-                attr=builtin
+                attr="builtin"
             ),
             attr=func_id
         ),
         args=list(args),
         keywords=[]
     )
+
 
 def compile_get_value(varname):
     return ast.Call(
@@ -77,6 +89,35 @@ def compile_get_value(varname):
         args=[],
         keywords=[]
     )
+
+
+ASK_OPS = {
+    ("eq", 2): partial(comparison, ast.Eq()),
+    ("lt", 2): partial(comparison, ast.Lt()),
+    ("leq", 2): partial(comparison, ast.LtE()),
+    ("gt", 2): partial(comparison, ast.Gt()),
+    ("geq", 2): partial(comparison, ast.GtE()),
+    ("neq", 2): partial(comparison, ast.NotEq()),
+    ("bound", 1): partial(compile_builtin_call, "is_bound")
+}
+
+ASK_OPS_GROUNDNESS = {
+    ("eq", 2): (True, True),
+    ("lt", 2): (True, True),
+    ("leq", 2): (True, True),
+    ("gt", 2): (True, True),
+    ("geq", 2): (True, True),
+    ("neq", 2): (True, True),
+    ("bound", 1): (False,)
+}
+
+TELL_OPS = {
+    ("eq", 2): partial(compile_builtin_call, "tell_eq")
+}
+
+TELL_OPS_GROUNDNESS = {
+    ("eq", 2): (False, False)
+}
 
 class Emitter:
 
@@ -113,58 +154,66 @@ class Emitter:
 
         return ast.Module(body=defs)
 
-    def check_for_ask_constraint(self, param):
+
+    def check_for_ask_constraint(self, param, get_value=False):
         if isinstance(param, chrast.Var) and param.name in self.known_vars:
-            return compile_get_value(param.name)
+            if get_value:
+                return compile_get_value(param.name)
+            return ast.Name(id=param.name, ctx=ast.Load())
         elif isinstance(param, chrast.Const):
             return ast.Constant(value=param.val, kind=None)
         else:
             raise Exception(f'invalid argument for ask_eq: {param}')
 
 
-    def check_for_tell_constraint(self, param):
+    def check_for_tell_constraint(self, param, get_value=False):
         if isinstance(param, chrast.Var):
             if param.name not in self.known_vars:
                 self.add_var(param.name)
-            return compile_get_value(param.name)
+            if get_value:
+                return compile_get_value(param.name)
+            return ast.Name(id=param.name, ctx=ast.Load())
         elif isinstance(param, chrast.Const):
             return ast.Constant(value=c.paramval, kind=None)
         else:
             raise Exception(f'invalid argument for ask_eq: {param}')
 
 
+    def compile_tell_constraint(self, symbol, params):
+        arity = len(params)
+        if (symbol, arity) not in TELL_OPS:
+            raise Exception(f'unknown symbol: {symbol}/{arity}')
+
+        prepared_params = [
+            self.check_for_tell_constraint(param, get_value=force_ground)
+            for param, force_ground
+            in zip(params, TELL_OPS_GROUNDNESS[symbol, arity])
+        ]
+
+        return TELL_OPS[symbol, params](prepared_params)
+
+
+    def compile_ask_constraint(self, symbol, params):
+        arity = len(params)
+        if (symbol, arity) not in ASK_OPS:
+            raise Exception(f'unknown symbol: {symbol}/{arity}')
+
+        prepared_params = [
+            self.check_for_ask_constraint(param, get_value=force_ground)
+            for param, force_ground
+            in zip(params, ASK_OPS_GROUNDNESS[symbol, arity])
+        ]
+        result = ASK_OPS[symbol, arity](prepared_params)
+        return result
+
+
     def compile_guard_constraint(self, c):
-        if c.symbol == "ask_eq" and c.arity == 2:
-            l = self.check_for_ask_constraint(c.params[0])
-            r = self.check_for_ask_constraint(c.params[1])
+        cat, symbol = c.symbol.split('_')
 
-            return ast.Compare(
-                left=l,
-                ops=[ast.Eq()],
-                comparators=[r]
-            )
-
-        elif c.symbol == "tell_eq" and c.arity == 2:
-            l = self.check_for_tell_constraint(c.params[0])
-            r = self.check_for_tell_constraint(c.params[1])
-
-            return compile_builtin_call(
-                "tell_eq",
-                [l, r]
-            )
-
-        elif c.symbol == "ask_leq" and c.arity == 2:
-            l = self.check_for_ask_constraint(c.params[0])
-            r = self.check_for_ask_constraint(c.params[1])
-
-            return ast.Compare(
-                left=l,
-                ops=[ast.LtE()],
-                comparators=[r]
-            )
-
-        else:
-            raise Exception(f'unknown builtin constraint: {c.symbol}/{c.arity}')
+        if cat == 'ask':
+            return self.compile_ask_constraint(symbol, c.params)
+        elif cat == 'tell':
+            return self.compile_tell_constraint(symbol, c.params)
 
 
     def compile_body(self, i, occurrence_scheme):

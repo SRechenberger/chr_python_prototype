@@ -22,7 +22,7 @@ class Var:
         return f'Var({str(self.name)})'
 
     def __repr__(self):
-        return repr(self.name)
+        return f'Var({repr(self.name)})'
 
 
 class Const:
@@ -33,7 +33,7 @@ class Const:
         return f'Const({str(self.val)})'
 
     def __repr__(self):
-        return repr(self.val)
+        return f'Var({repr(self.val)})'
 
 
 class Constraint:
