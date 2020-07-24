@@ -44,18 +44,6 @@ def comparison(op, args):
     )
 
 
-def compile_alive(id):
-    return ast.Call(
-        func=ast.Attribute(
-            value=ast.Attribute(
-                value=ast.Name(id="self"),
-                attr="chr"
-            ),
-            attr="alive"
-        ),
-        args=[ast.Name(id=id, context=ast.Load())],
-        keywords=[]
-    )
 
 
 def compile_all_different(ids):
@@ -66,7 +54,26 @@ def compile_all_different(ids):
     )
 
 
-def compile_builtin_call(func_id, args):
+def compile_chr_call(func_id, args):
+    return ast.Call(
+        func=ast.Attribute(
+            value=ast.Attribute(
+                value=ast.Name(id="self"),
+                attr="chr"
+            ),
+            attr=func_id
+        ),
+        args=list(args),
+        keywords=[]
+    )
+
+def compile_alive(id):
+    return compile_chr_call(
+        "alive",
+        [ast.Name(id=id, context=ast.Load())]
+    )
+
+def compile_builtin_call(func_id, args, kwargs=[]):
     return ast.Call(
         func=ast.Attribute(
             value=ast.Attribute(
@@ -76,9 +83,28 @@ def compile_builtin_call(func_id, args):
             attr=func_id
         ),
         args=list(args),
-        keywords=[]
+        keywords=kwargs
     )
 
+def compile_in_history(rule_id, ids):
+    return compile_chr_call(
+        "in_history",
+        [ast.Constant(value=rule_id, kind=None)] + \
+        [ast.Name(id=id, context=ast.Load()) for id in ids]
+    )
+
+def compile_add_to_history(rule_id, ids):
+    return compile_chr_call(
+        "add_to_history",
+        [ast.Constant(value=rule_id, kind=None)] + \
+        [ast.Name(id=id, context=ast.Load()) for id in ids]
+    )
+
+def compile_delete(id):
+    return compile_chr_call(
+        "delete",
+        [ast.Name(id=id, context=ast.Load())]
+    )
 
 def compile_get_value(varname):
     return ast.Call(
@@ -119,6 +145,14 @@ TELL_OPS_GROUNDNESS = {
     ("eq", 2): (False, False)
 }
 
+TERM_OPS = {
+    '+': ast.Add,
+    '-': ast.Sub,
+    '*': ast.Mult,
+    '/': ast.Div,
+    '%': ast.Mod
+}
+
 class Emitter:
 
     def __init__(self):
@@ -132,8 +166,8 @@ class Emitter:
         self.known_vars.add(var)
 
 
-    def gensym(self):
-        sym = f'_E{self.next_gen_var}'
+    def gensym(self, prefix="E"):
+        sym = f'_{prefix}_{self.next_gen_var}'
         self.next_gen_var += 1
         return sym
 
@@ -174,9 +208,56 @@ class Emitter:
                 return compile_get_value(param.name)
             return ast.Name(id=param.name, ctx=ast.Load())
         elif isinstance(param, chrast.Const):
-            return ast.Constant(value=c.paramval, kind=None)
+            return ast.Constant(value=c.val, kind=None)
         else:
             raise Exception(f'invalid argument for ask_eq: {param}')
+
+
+    def compile_term(self, term):
+        if isinstance(term, chrast.Term):
+            symbol = term.symbol
+            arity = len(term.params)
+            subterms = []
+
+            for subterm in term.params:
+                subterm = self.compile_term(subterm)
+                subterms += subterm_eval
+
+            if symbol == '-' and arity == 1:
+                return ast.UnaryOp(
+                    ast.Invert(),
+                    operand=ast.Name(id=subterm_vars[0], ctx=ast.Load())
+                )
+            elif symbol in TERM_OPS and arity == 2:
+                return ast.BinOp(
+                    left=ast.Name(id=subterm_vars[0], ctx=ast.Load()),
+                    op=TERM_OPS[symbol],
+                    right=ast.Name(id=subterm_vars[1], ctx=ast.Load())
+                )
+            else:
+                raise Exception(f"unknown operator: {symbol}/{arity}")
+
+        elif isinstance(term, chrast.Var):
+            return compile_get_value(term.name)
+
+        elif isinstance(term, chrast.Const):
+            return ast.Constant(value=term.val, kind=None)
+
+
+        raise TypeError(f'not a valid term: {term}')
+
+
+    def compile_fresh(self, value_ast=None):
+        varname = self.gensym(prefix="local")
+        stmt = ast.Assign(
+            targets=[ast.Name(id=varname, ctx=ast.Load())],
+            value=compile_builtin_call(
+                "fresh",
+                [],
+                kwargs={value=value_ast} if value else []
+            )
+        )
+        return varname, stmt
 
 
     def compile_tell_constraint(self, symbol, params):
@@ -207,6 +288,48 @@ class Emitter:
         return result
 
 
+    def compile_body_chr_constraint(self, c):
+        symbol = c.symbol
+        params = c.params
+
+        inits = []
+        vars = []
+
+        for param in params:
+            value_ast = self.compile_term(param)
+            var, init = self.compile_fresh(value_ast=value_ast)
+
+            inits += init
+            vars.append(var)
+
+        id = self.gensym(prefix="fresh_id")
+        new_id_stmt = ast.Assign(
+            target=ast.Name(id=id, ctx=ast.Load()),
+            value=compile_chr_call("new", [])
+        )
+        constr = self.gensym(prefix="fresh_constr")
+        new_constr_stmt = ast.Assign(
+            target=ast.Name(id=new_constr, ctx=ast.Load()),
+            value=ast.Tuple(elts=[
+                ast.Constant(value=symbol),
+                *[ast.Name(id=var) for var in vars]
+            ])
+        )
+
+        insert_stmt = ast.Expr(
+            value=compile_chr_call(
+                "insert",
+                [ast.Name(id=constr), ast.Name(id=id)]
+            )
+        )
+
+        return [*inits, new_id_stmt, new_constr_stmt, insert_stmt]
+
+
+
+
+
+
     def compile_guard_constraint(self, c):
         cat, symbol = c.symbol.split('_')
 
@@ -220,6 +343,29 @@ class Emitter:
 
         idxs = list(self.indexes.keys())
 
+        history_entry = (
+            occurrence_scheme.rule_name,
+            [f'id_{ix}' for ix in idxs]
+        )
+
+        kills = [
+            ast.Expr(value=compile_delete(f'id_{id}'))
+            for id, kept in self.indexes.items()
+            if not kept
+        ]
+
+        history_check = ast.If(
+            test=ast.UnaryOp(
+                op=ast.Not(),
+                operand=compile_in_history(*history_entry)
+            ),
+            body=[
+                ast.Expr(value=compile_add_to_history(*history_entry)),
+                *kills
+            ],
+            orelse=[]
+        )
+
         guard_check = ast.If(
             test=ast.BoolOp(
                 op=ast.And(),
@@ -228,7 +374,7 @@ class Emitter:
                     occurrence_scheme.guard
                 ))
             ),
-            body=[ast.Pass()],
+            body=[history_check],
             orelse=[]
         )
 

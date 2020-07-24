@@ -8,7 +8,9 @@ TEST_PROGRAM = '''
 def __gcd_1_0(id_0, _0):
     if self.chr.alive(id_0):
         if self.builtin.is_bound(_0) and _0.get_value() == 0:
-            pass
+            if not self.chr.in_history('r1', id_0):
+                self.chr.add_to_history('r1', id_0)
+                self.chr.delete(id_0)
     return False
 
 def __gcd_1_1(id_0, _1):
@@ -20,7 +22,9 @@ def __gcd_1_1(id_0, _1):
                 self.builtin.is_bound(_1) and
                 _0.get_value() <= _1.get_value()
             ):
-                pass
+                if not self.chr.in_history('r2', id_0, id_1):
+                    self.chr.add_to_history('r2', id_0, id_1)
+                    self.chr.delete(id_0)
     return False
 
 def __gcd_1_2(id_1, _0):
@@ -32,7 +36,9 @@ def __gcd_1_2(id_1, _0):
                 self.builtin.is_bound(_1) and
                 _0.get_value() <= _1.get_value()
             ):
-                pass
+                if not self.chr.in_history('r2', id_0, id_1):
+                    self.chr.add_to_history('r2', id_0, id_1)
+                    self.chr.delete(id_0)
     return False
 '''
 

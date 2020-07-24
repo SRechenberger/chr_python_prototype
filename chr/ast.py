@@ -119,7 +119,8 @@ class Rule:
 
 
 class OccurrenceScheme:
-    def __init__(self, occurring_constraint, other_constraints, guard, body):
+    def __init__(self, rule_name, occurring_constraint, other_constraints, guard, body):
+        self.rule_name = rule_name
         self.occurring_constraint = occurring_constraint
         self.other_constraints = other_constraints
         self.guard = guard
@@ -159,7 +160,7 @@ class ProcessedRule:
     def get_occurrence_scheme(self, idx):
         indexed = list(enumerate(self.head))
         constraint = indexed.pop(idx)
-        return OccurrenceScheme(constraint, indexed, self.guard, self.body)
+        return OccurrenceScheme(self.name, constraint, indexed, self.guard, self.body)
 
     def get_occurrence_schemes(self):
         for idx, _ in enumerate(self.head):
