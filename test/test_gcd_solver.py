@@ -90,7 +90,7 @@ class IterativeSolver:
     def gcd(self, *args):
         if len(args) == 1:
             vars = [
-                arg if isinstance(arg, rt.LogicVariable) else self.builtin.fresh(value=args[0])
+                arg if isinstance(arg, rt.LogicVariable) else self.builtin.fresh(value=arg)
                 for arg in args
             ]
             new_constraint = (GCD_1_SYMBOL, *vars)

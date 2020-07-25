@@ -1,5 +1,29 @@
 from collections.abc import Hashable
 
+class UndefinedConstraintError(Exception):
+    def __init__(self, symbol, arity):
+        self.signature = f'{symbol}/{arity}'
+
+    def __str__(self):
+        return f'undefined constraint: {self.signature}'
+
+    def __repr__(self):
+        return str(self)
+
+
+class InconsistentBuiltinStoreError(Exception):
+    pass
+
+
+def all_different(*vals):
+    s = set()
+    for val in vals:
+        if val in s:
+            return False
+        s.add(val)
+
+    return True
+
 class CHRStore:
 
     def __init__(self):
