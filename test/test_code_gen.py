@@ -217,5 +217,6 @@ def test_propagation():
 
     solver = p.PropagationTest()
     solver.b()
+    solver.b()
 
-    assert ('b/0', ) in solver.chr.constraints.values()
+    assert [('b/0', ), ('b/0', )] == list(solver.chr.constraints.values())
