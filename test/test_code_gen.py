@@ -10,10 +10,16 @@ TEST_PROGRAM = '''
 from chr.runtime import \\
     UndefinedConstraintError, \\
     InconsistentBuiltinStoreError, \\
-    all_different
+    all_different, \\
+    CHRStore, \\
+    BuiltInStore
 
 
 class GCDSolver:
+
+    def __init__(self):
+        self.builtin, self.chr = BuiltInStore(), CHRStore()
+
     def gcd(self, *args):
         if len(args) == 1:
             vars = [

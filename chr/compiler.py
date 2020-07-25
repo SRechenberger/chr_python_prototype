@@ -230,19 +230,48 @@ class Emitter:
             for symbol, arities in constraints.items()
         ]
 
+        init_func = ast.FunctionDef(
+            name="__init__",
+            args=ast.arguments(
+                args=[ast.arg(arg="self", annotation=None)],
+                vararg=[],
+                kwarg=None,
+                defaults=[]
+            ),
+            body=[
+                ast.Assign(
+                    targets=[ast.Tuple(elts=[
+                        ast.Name(id="self.builtin"),
+                        ast.Name(id="self.chr"),
+                    ])],
+                    value=ast.Tuple(elts=[
+                        ast.Call(
+                            func=ast.Name(id=constructor),
+                            args=[], keywords=[]
+                        )
+                        for constructor in ("BuiltInStore", "CHRStore")
+                    ])
+                )
+            ],
+            decorator_list=[]
+        )
+
         return ast.Module(body=[
             ast.ImportFrom(
                 module="chr.runtime",
                 names=[
                     ast.alias(name="UndefinedConstraintError",asname=None),
                     ast.alias(name="InconsistentBuiltinStoreError", asname=None),
-                    ast.alias(name="all_different", asname=None)
+                    ast.alias(name="all_different", asname=None),
+                    ast.alias(name="CHRStore", asname=None),
+                    ast.alias(name="BuiltInStore", asname=None)
                 ],
                 level=0
             ),
             ast.ClassDef(
                 name=solver_class_name,
                 body=[
+                    init_func,
                     *constraint_functions,
                     *activations,
                     *occurrences
