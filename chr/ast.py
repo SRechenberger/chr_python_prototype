@@ -54,7 +54,7 @@ class Const:
 
 
 class Constraint(Term):
-    def __init__(self, symbol, params):
+    def __init__(self, symbol, params=[]):
         self.symbol = symbol
         self.params = params
         self.arity = len(params)

@@ -117,8 +117,19 @@ def compile_get_value(varname):
         keywords=[]
     )
 
+def compile_is_bound(varname):
+    print("varname", varname)
+    return ast.Call(
+        func=ast.Attribute(
+            value=varname[0],
+            attr="is_bound"
+        ),
+        args=[],
+        keywords=[]
+    )
 
-def compile_activate(id, var, symbol):
+
+def compile_activate(id, args, symbol):
     return ast.Expr(ast.Call(
         func=ast.Attribute(
             value=ast.Name(id="self", ctx=ast.Load()),
@@ -126,7 +137,7 @@ def compile_activate(id, var, symbol):
         ),
         args=[
             ast.Name(id=id, context=ast.Load()),
-            ast.Name(id=var, context=ast.Load())
+            *(ast.Name(id=arg, context=ast.Load()) for arg in args)
         ],
         keywords=[]
     ))
@@ -138,7 +149,7 @@ ASK_OPS = {
     ("gt", 2): partial(comparison, ast.Gt()),
     ("geq", 2): partial(comparison, ast.GtE()),
     ("neq", 2): partial(comparison, ast.NotEq()),
-    ("bound", 1): partial(compile_builtin_call, "is_bound")
+    ("bound", 1): compile_is_bound
 }
 
 ASK_OPS_GROUNDNESS = {
@@ -188,7 +199,7 @@ class Emitter:
         return sym
 
 
-    def compile_program(self, solver_class_name, program, user_constraints):
+    def compile_program(self, solver_class_name, program):
         if not isinstance(program, chrast.Program):
             raise TypeError(f'{program} is not an instance of {chrast.Program}')
 
@@ -196,8 +207,17 @@ class Emitter:
 
         print(program.rules)
 
-        occs = {}
-        constraints = {}
+        occs = {
+            (symbol, int(arity)): []
+            for symbol, arity in map(lambda x:x.split('/'), self.chr_constraints)
+        }
+        constraints = {
+            symbol: set([int(arity)])
+            for symbol, arity in map(lambda x:x.split('/'), self.chr_constraints)
+        }
+
+        print(constraints)
+
         for rule in processed.rules:
             defn = [
                 self.compile_occurrence(occurrence_scheme)
@@ -264,7 +284,9 @@ class Emitter:
                     ast.alias(name="InconsistentBuiltinStoreError", asname=None),
                     ast.alias(name="all_different", asname=None),
                     ast.alias(name="CHRStore", asname=None),
-                    ast.alias(name="BuiltInStore", asname=None)
+                    ast.alias(name="BuiltInStore", asname=None),
+                    ast.alias(name="LogicVariable", asname=None),
+                    ast.alias(name="CHRFalse", asname=None)
                 ],
                 level=0
             ),
@@ -396,7 +418,7 @@ class Emitter:
         pname = f"__activate_{symbol}_{arity}"
         params = [ 'id', *(f'_{i}' for i in range(0, arity)) ]
         procnames = [
-            f'__{symbol}_{arity}_{i+1}'
+            f'__{symbol}_{arity}_{i}'
             for i in range(0, occurrences)
         ]
 
@@ -419,41 +441,44 @@ class Emitter:
             for procname in procnames
         ]
 
-        delay = ast.If(
-            test=ast.BoolOp(op=ast.Or(),
-                values=[
-                    ast.UnaryOp(
-                        op=ast.Not(),
-                        operand=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id=param, ctx=ast.Load()),
-                                attr="is_bound"
-                            ),
-                            args=[],
-                            keywords=[]
+        delay = ast.Pass()
+
+        if len(params) > 1:
+            delay = ast.If(
+                test=ast.BoolOp(op=ast.Or(),
+                    values=[
+                        ast.UnaryOp(
+                            op=ast.Not(),
+                            operand=ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Name(id=param, ctx=ast.Load()),
+                                    attr="is_bound"
+                                ),
+                                args=[],
+                                keywords=[]
+                            )
                         )
-                    )
-                    for param in params[1:]
-                ]
-            ),
-            body=[ast.Expr(
-                value=compile_builtin_call("delay", args=[
-                    ast.Lambda(
-                        args=ast.arguments(args=[], defaults=[], vararg=None, kwarg=None),
-                        body=ast.Call(
-                            func=ast.Name(id=pname, ctx=ast.Load()),
-                            args=[
-                                ast.Name(id=param, ctx=ast.Load())
-                                for param in params
-                            ],
-                            keywords=[]
-                        )
-                    ),
-                    *(ast.Name(id=param, ctx=ast.Load()) for param in params[1:])
-                ])
-            )],
-            orelse=[]
-        )
+                        for param in params[1:]
+                    ]
+                ),
+                body=[ast.Expr(
+                    value=compile_builtin_call("delay", args=[
+                        ast.Lambda(
+                            args=ast.arguments(args=[], defaults=[], vararg=None, kwarg=None),
+                            body=ast.Call(
+                                func=ast.Name(id=pname, ctx=ast.Load()),
+                                args=[
+                                    ast.Name(id=param, ctx=ast.Load())
+                                    for param in params
+                                ],
+                                keywords=[]
+                            )
+                        ),
+                        *(ast.Name(id=param, ctx=ast.Load()) for param in params[1:])
+                    ])
+                )],
+                orelse=[]
+            )
 
         return ast.FunctionDef(
             name=pname,
@@ -482,7 +507,7 @@ class Emitter:
         elif isinstance(param, chrast.Const):
             return ast.Constant(value=param.val, kind=None)
         else:
-            raise Exception(f'invalid argument for ask_eq: {param}')
+            raise Exception(f'invalid argument for ask-constraint: {param}')
 
 
     def check_for_tell_constraint(self, param, get_value=False):
@@ -495,7 +520,7 @@ class Emitter:
         elif isinstance(param, chrast.Const):
             return ast.Constant(value=c.val, kind=None)
         else:
-            raise Exception(f'invalid argument for ask_eq: {param}')
+            raise Exception(f'invalid argument for ask-constraint: {param}')
 
 
     def compile_term(self, term):
@@ -584,6 +609,7 @@ class Emitter:
         inits = []
         vars = []
 
+
         for param in params:
             if isinstance(param, chrast.Var):
                 vars.append(param.name)
@@ -593,6 +619,19 @@ class Emitter:
 
                 inits += [init]
                 vars.append(var)
+                self.known_vars.add(var)
+
+        if symbol == "false":
+            false_stmt = ast.Raise(
+                exc=ast.Call(
+                    func=ast.Name(id="CHRFalse"),
+                    args=[compile_get_value(var) for var in vars],
+                    keywords=[]
+                ),
+                cause=None
+            )
+
+            return [*inits, false_stmt], None, None
 
         if c.signature in self.chr_constraints:
             new_id = self.gensym(prefix="fresh_id")
@@ -612,11 +651,11 @@ class Emitter:
             insert_stmt = ast.Expr(
                 value=compile_chr_call(
                     "insert",
-                    [ast.Name(id=new_constr), ast.Name(id=new_id)]
+                    [ast.Name(id=new_constr),ast.Name(id=new_id)]
                 )
             )
 
-            return [*inits, new_id_stmt, new_constr_stmt, insert_stmt], new_id, new_constr
+            return [*inits, new_id_stmt, new_constr_stmt, insert_stmt], new_id, [ast.Name(id=var) for var in vars]
 
         new_builtin_constraint = chrast.Constraint(symbol, list(map(chrast.Var, vars)))
 
@@ -629,8 +668,18 @@ class Emitter:
                 ast.Expr(value=compile_builtin_call("set_inconsistent", args=[])),
                 ast.Raise(
                     exc=ast.Call(
-                        func=ast.Name("InconsistentBuiltinStoreError", ctx=ast.Load()),
-                        args=[],
+                        func=ast.Name("CHRFalse", ctx=ast.Load()),
+                        args=[
+                            ast.Constant(value=c.signature, kind=None),
+                            *(
+                                ast.Call(
+                                    func=ast.Name(id="str"),
+                                    args=[ast.Name(id=vname)],
+                                    keywords=[]
+                                )
+                                for vname in vars
+                            )
+                        ],
                         keywords=[]
                     ),
                     cause=None
@@ -664,12 +713,12 @@ class Emitter:
         activates = []
 
         for constr in body_constraints:
-            compiled_constr, new_id, new_c = self.compile_body_constraint(constr)
+            compiled_constr, new_id, constr_args = self.compile_body_constraint(constr)
             body += compiled_constr
             if constr.signature in self.chr_constraints:
                 activates += [compile_activate(
                     new_id,
-                    new_c,
+                    constr_args,
                     f'{constr.symbol}_{constr.arity}'
                 )]
 
@@ -714,17 +763,20 @@ class Emitter:
             orelse=[]
         )
 
-        guard_check = ast.If(
-            test=ast.BoolOp(
-                op=ast.And(),
-                values=list(map(
-                    self.compile_guard_constraint,
-                    occurrence_scheme.guard
-                ))
-            ),
-            body=[history_check],
-            orelse=[]
-        )
+        guard_check = history_check
+
+        if occurrence_scheme.guard:
+            guard_check = ast.If(
+                test=ast.BoolOp(
+                    op=ast.And(),
+                    values=list(map(
+                        self.compile_guard_constraint,
+                        occurrence_scheme.guard
+                    ))
+                ),
+                body=[history_check],
+                orelse=[]
+            )
 
         matching = [
             ast.Assign(
@@ -792,7 +844,7 @@ class Emitter:
                         value=ast.Constant(value=f'{c.symbol}/{c.arity}', kind=None)
                     ),
                     ast.keyword(
-                        arg='fixed',
+                        arg='fix',
                         value=ast.Constant(value=True, kind=None)
                     )
                 ]

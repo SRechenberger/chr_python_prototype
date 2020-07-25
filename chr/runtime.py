@@ -14,6 +14,9 @@ class UndefinedConstraintError(Exception):
 class InconsistentBuiltinStoreError(Exception):
     pass
 
+class CHRFalse(Exception):
+    def __init__(self, messages):
+        self.messages = messages
 
 def all_different(*vals):
     s = set()
