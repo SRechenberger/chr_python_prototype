@@ -2,6 +2,8 @@ class Term:
     def __init__(self, symbol, params):
         self.symbol = symbol
         self.params = params
+        self.arity = len(params)
+        self.signature = f'{self.symbol}/{self.arity}'
 
     def __str__(self):
         return f'{self.symbol}({", ".join(map(str, self.params))})'
@@ -12,6 +14,15 @@ class Term:
 
     def __repr__(self):
         return str(self)
+
+    def vars(self):
+        if self.arity > 0:
+            vs, *vss = map(
+                lambda p: set([p]) if type(p) is str else p.vars(),
+                self.params
+            )
+            return vs.union(*vss)
+        return set()
 
 
 class Var:
@@ -24,6 +35,9 @@ class Var:
     def __repr__(self):
         return f'Var({repr(self.name)})'
 
+    def vars(self):
+        return set([self.name])
+
 
 class Const:
     def __init__(self, val):
@@ -35,12 +49,16 @@ class Const:
     def __repr__(self):
         return f'Var({repr(self.val)})'
 
+    def vars(self):
+        return set()
 
-class Constraint:
+
+class Constraint(Term):
     def __init__(self, symbol, params):
         self.symbol = symbol
         self.params = params
         self.arity = len(params)
+        self.signature = f'{symbol}/{self.arity}'
 
     def __str__(self):
         return f'{self.symbol}({", ".join(map(str, self.params))})'
@@ -51,6 +69,7 @@ class Constraint:
 
     def __repr__(self):
         return str(self)
+
 
 
 class HeadConstraint(Constraint):
@@ -148,6 +167,15 @@ class OccurrenceScheme:
 
     def __repr__(self):
         return str(self)
+
+    def free_vars(self):
+        oc_vars = self.occurring_constraint[1].vars()
+        print("oc_vars", oc_vars)
+        head_vars = oc_vars.union(*map(lambda c:c[1].vars(), self.other_constraints))
+        print("head_vars", head_vars)
+        return set().union(*map(lambda c:c.vars(), self.guard + self.body)) \
+             - head_vars
+
 
 
 class ProcessedRule:

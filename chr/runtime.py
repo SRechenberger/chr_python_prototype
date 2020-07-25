@@ -235,6 +235,7 @@ class BuiltInStore:
         self.vars = {}
         self.next_fresh_var = 0
         self.trail = []
+        self.consistent = True
 
 
     def fresh(self, name=None, value=None):
@@ -266,3 +267,9 @@ class BuiltInStore:
 
     def tell_eq(self, x, y):
         return unify(x, y)
+
+    def set_inconsistent(self):
+        self.consistent = False
+
+    def is_consistent(self):
+        return self.consistent
