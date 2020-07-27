@@ -2,4 +2,4 @@
 
 :- chr_constraint test/1, passed/1.
 
-test(X), test(Z) <=> X == Z.
+test(X) \ test(Z) <=> X == Z.

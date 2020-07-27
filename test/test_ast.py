@@ -2,7 +2,7 @@ from chr.ast import *
 import pytest
 
 def test_program_processing():
-    program = Program(rules=[
+    program = Program(user_constraints=["gcd/1"], rules=[
         Rule(
             name="r1",
             kept_head=[],
@@ -22,7 +22,7 @@ def test_program_processing():
         )
     ])
 
-    processed = Program(rules=[
+    processed = Program(user_constraints=["gcd/1"], rules=[
         ProcessedRule(
             name="r1",
             head=[HeadConstraint("gcd", 0, ["N"], False)],

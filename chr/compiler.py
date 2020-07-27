@@ -180,12 +180,12 @@ TERM_OPS = {
 
 class Emitter:
 
-    def __init__(self, chr_constraints, existentials=set()):
+    def __init__(self, existentials=set()):
         self.next_gen_var = 0
         self.known_vars = set()
         self.matchings = {}
         self.indexes = {}
-        self.chr_constraints = chr_constraints
+        self.chr_constraints = None
         self.existential_variables = existentials
 
 
@@ -202,6 +202,8 @@ class Emitter:
     def compile_program(self, solver_class_name, program):
         if not isinstance(program, chrast.Program):
             raise TypeError(f'{program} is not an instance of {chrast.Program}')
+
+        self.chr_constraints = set(program.user_constraints)
 
         processed, _ = program.omega_r()
 

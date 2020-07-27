@@ -1,12 +1,15 @@
 class Term:
-    def __init__(self, symbol, params):
+    def __init__(self, symbol, params=[]):
         self.symbol = symbol
         self.params = params
         self.arity = len(params)
         self.signature = f'{self.symbol}/{self.arity}'
 
     def __str__(self):
-        return f'{self.symbol}({", ".join(map(str, self.params))})'
+        if self.arity > 0:
+            return f'{self.symbol}({", ".join(map(str, self.params))})'
+        else:
+            return self.symbol
 
     def __eq__(self, other):
         return self.symbol == other.symbol \
@@ -35,6 +38,10 @@ class Var:
     def __repr__(self):
         return f'Var({repr(self.name)})'
 
+    def __eq__(self, other):
+        return type(self) == type(other) \
+            and self.name == other.name
+
     def vars(self):
         return set([self.name])
 
@@ -47,28 +54,19 @@ class Const:
         return f'Const({str(self.val)})'
 
     def __repr__(self):
-        return f'Var({repr(self.val)})'
+        return f'Const({repr(self.val)})'
+
+    def __eq__(self, other):
+        return type(self) == type(other) \
+            and type(self.val) == type(other.val) \
+            and self.val == other.val
 
     def vars(self):
         return set()
 
 
 class Constraint(Term):
-    def __init__(self, symbol, params=[]):
-        self.symbol = symbol
-        self.params = params
-        self.arity = len(params)
-        self.signature = f'{symbol}/{self.arity}'
-
-    def __str__(self):
-        return f'{self.symbol}({", ".join(map(str, self.params))})'
-
-    def __eq__(self, other):
-        return self.symbol == other.symbol \
-            and self.params == other.params
-
-    def __repr__(self):
-        return str(self)
+    pass
 
 
 
@@ -83,7 +81,7 @@ class HeadConstraint(Constraint):
     def __str__(self):
         return ('+' if self.kept else '-') \
             + f'{self.symbol}_{self.occurrence_idx}' \
-            + f'({", ".join(map(str, self.params))})'
+            + (f'({", ".join(map(str, self.params))})' if self.arity > 0 else "")
 
     def __eq__(self, other):
         return self.symbol == other.symbol \
@@ -217,11 +215,13 @@ class ProcessedRule:
 
 
 class Program:
-    def __init__(self, rules):
+    def __init__(self, user_constraints, rules):
+        self.user_constraints = user_constraints
         self.rules = rules
 
     def __eq__(self, other):
-        return self.rules == other.rules
+        return self.user_constraints == other.user_constraints \
+            and self.rules == other.rules
 
     def __str__(self):
         return '\n'.join(map(str, self.rules))
@@ -271,4 +271,4 @@ class Program:
             ))
 
 
-        return Program(rules), symbols
+        return Program(self.user_constraints, rules), symbols

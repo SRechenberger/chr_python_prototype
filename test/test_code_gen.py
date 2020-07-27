@@ -120,7 +120,17 @@ class GCDSolver:
         return False
 '''
 
-program = Program(rules=[
+program_code = '''
+constraints gcd/1.
+
+error @ gcd(_0) <=> ask_lt(_0, 0) | false("Number < Zero").
+r1 @ gcd(_0) <=> ask_eq(_0, 0) | true.
+r2 @ gcd(_0) \\ gcd(_1) <=>
+        ask_bound(_0), ask_bound(_1), ask_leq(_0, _1) |
+    tell_eq(_2, '-'(_1, _0)), gcd(_2).
+'''
+
+program = Program(user_constraints=["gcd/1"], rules=[
     # error @ gcd(_0) <=> _0 < 0 | false.
     Rule(
         name="error",
@@ -162,7 +172,7 @@ program = Program(rules=[
     )
 ])
 
-program2 = Program(rules=[
+program2 = Program(user_constraints=["a/0", "b/0"], rules=[
     # test @ a ==> b.
     Rule(
         name="test",
@@ -174,7 +184,7 @@ program2 = Program(rules=[
 ])
 
 def test_code_gen():
-    e = Emitter(set(["gcd/1"]))
+    e = Emitter()
     result = e.compile_program("GCDSolver", program)
     expected = ast.parse(TEST_PROGRAM)
     print("result:")
