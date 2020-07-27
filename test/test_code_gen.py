@@ -14,16 +14,12 @@ from chr.runtime import \\
     UndefinedConstraintError, \\
     InconsistentBuiltinStoreError, \\
     all_different, \\
-    CHRStore, \\
-    BuiltInStore, \\
     LogicVariable, \\
-    CHRFalse
+    CHRFalse, \\
+    CHRSolver
 
 
-class GCDSolver:
-
-    def __init__(self):
-        self.builtin, self.chr = BuiltInStore(), CHRStore()
+class GCDSolver(CHRSolver):
 
     def gcd(self, *args):
         if len(args) == 1:

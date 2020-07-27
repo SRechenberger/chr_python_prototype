@@ -44,9 +44,9 @@ def test_eq_solver():
     from generated.eq_solver import EqSolver
 
     solver = EqSolver()
-    a = solver.builtin.fresh()
-    b = solver.builtin.fresh()
-    c = solver.builtin.fresh()
+    a = solver.fresh_var()
+    b = solver.fresh_var()
+    c = solver.fresh_var()
 
     solver.eq(a, b)
     solver.eq(c, b)

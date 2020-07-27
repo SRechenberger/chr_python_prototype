@@ -303,3 +303,12 @@ class BuiltInStore:
 
     def is_consistent(self):
         return self.consistent
+
+
+class CHRSolver:
+
+    def __init__(self):
+        self.builtin, self.chr = BuiltInStore(), CHRStore()
+
+    def fresh_var(self, name=None, value=None):
+        return self.builtin.fresh(name=None, value=value)
