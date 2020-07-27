@@ -1,0 +1,3 @@
+constraints triple/3, single/1.
+
+triple(X, Y, Z) ==> single(X), single(Y), single(Y).

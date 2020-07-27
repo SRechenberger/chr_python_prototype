@@ -96,7 +96,7 @@ class GCDSolver:
 
     def __gcd_1_3(self, id_1, _0):
         for id_0, c_0 in self.chr.get_iterator(symbol='gcd/1', fix=True):
-            if self.chr.alive(id_0) and self.chr.alive(id_1) and all_different(id_0, id_1):
+            if self.chr.alive(id_1) and self.chr.alive(id_0) and all_different(id_1, id_0):
                 _1 = c_0[1]
                 _2 = self.builtin.fresh()
                 if (
@@ -104,8 +104,8 @@ class GCDSolver:
                     _1.is_bound() and
                     _0.get_value() <= _1.get_value()
                 ):
-                    if not self.chr.in_history('r2', id_0, id_1):
-                        self.chr.add_to_history('r2', id_0, id_1)
+                    if not self.chr.in_history('r2', id_1, id_0):
+                        self.chr.add_to_history('r2', id_1, id_0)
                         self.chr.delete(id_0)
                         _local_0 = self.builtin.fresh(value=_1.get_value() - _0.get_value())
                         if not self.builtin.tell_eq(_2, _local_0):

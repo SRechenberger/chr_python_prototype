@@ -201,3 +201,6 @@ def parse_program():
         return Program(decls, rules)
 
     return fun
+
+def chr_parse(source):
+    return parse_program().parse(source)

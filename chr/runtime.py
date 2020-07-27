@@ -110,6 +110,9 @@ class CHRStore:
             it = list(it)
         return it
 
+    def dump(self):
+        return list(self.constraints.values())
+
 
 def unify(left, right):
     if isinstance(left, LogicVariable):

@@ -134,6 +134,57 @@ class Rule:
     def __repr__(self):
         return str(self)
 
+    def get_normal_form(self):
+        normal_kept = []
+        normal_removed = []
+        normal_guard = []
+        next_var_id = 0
+        known_vars = set()
+
+        def mk_new_var():
+            nonlocal next_var_id
+            new_var = None
+            while not new_var or new_var in known_vars:
+                new_var = f'_{next_var_id}'
+                next_var_id += 1
+            return new_var
+
+        for head, normal_head in [(self.kept_head, normal_kept), (self.removed_head, normal_removed)]:
+            for k in head:
+                normal_params = []
+                for p in k.params:
+                    if isinstance(p, Var):
+                        if p.name in known_vars:
+                            new_var = mk_new_var()
+                            known_vars.add(new_var)
+                            normal_guard.append(Constraint("ask_eq", params=[
+                                Var(new_var), p
+                            ]))
+                            normal_params.append(new_var)
+                        else:
+                            known_vars.add(p.name)
+                            normal_params.append(p.name)
+
+
+                    elif isinstance(p, Const) or isinstance(p, Term):
+                        new_var = mk_new_var()
+                        normal_guard.append(Constraint("ask_eq", params=[
+                            Var(new_var), p
+                        ]))
+                        normal_params.append(new_var)
+
+                    else:
+                        raise Exception(f"invalid head constraint term: {p}")
+                normal_head.append(Constraint(k.symbol, normal_params))
+
+        return Rule(
+            self.name,
+            normal_kept,
+            normal_removed,
+            normal_guard + self.guard,
+            [c for c in self.body if c.symbol != "true"]
+        )
+
 
 class OccurrenceScheme:
     def __init__(self, rule_name, occurring_constraint, other_constraints, guard, body):
@@ -199,7 +250,8 @@ class ProcessedRule:
             and self.guard == other.guard
 
     def __str__(self):
-        rule = ', '.join(map(str, self.head)) + ' <=> '
+        rule = f"{self.name} @ "
+        rule += ', '.join(map(str, self.head)) + ' <=> '
         if self.guard:
             rule += ', '.join(map(str, self.guard)) + ' | '
 
@@ -228,6 +280,12 @@ class Program:
 
     def __repr__(self):
         return str(self)
+
+    def get_normal_form(self):
+        return Program(
+            self.user_constraints,
+            [rule.get_normal_form() for rule in self.rules]
+        )
 
     def omega_r(self):
         symbols = {}

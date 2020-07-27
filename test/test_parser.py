@@ -73,7 +73,7 @@ def test_guard_body():
 program_code = '''constraints gcd/1.
 
 error @ gcd(_0) <=> ask_bound(_0), ask_lt(_0, 0) | false("Number < Zero").
-r1 @ gcd(_0) <=> ask_bound(_0), ask_eq(_0, 0) | true.
+r1 @ gcd(0) <=> true.
 r2 @ gcd(_0) \\ gcd(_1) <=>
         ask_bound(_0), ask_bound(_1), ask_leq(_0, _1) |
     tell_eq(_2, '-'(_1, _0)), gcd(_2).
@@ -97,11 +97,8 @@ program = Program(user_constraints=["gcd/1"], rules=[
     Rule(
         name="r1",
         kept_head=[],
-        removed_head=[Constraint("gcd", params=[Var("_0")])],
-        guard=[
-            Constraint("ask_bound", params=[Var("_0")]),
-            Constraint("ask_eq", params=[Var("_0"), Const(0)])
-        ],
+        removed_head=[Constraint("gcd", params=[Const(0)])],
+        guard=[],
         body=[Constraint("true")]
     ),
     # r2 @ gcd(_0) \ gcd(_1) <=> _0 <= _1 | _2 = _1 - _0, gcd(_2).
@@ -126,3 +123,6 @@ def test_parse_program():
     print("result:\n", result)
     print("expected:\n", program)
     assert result == program
+    print("result:\n", result.get_normal_form())
+    print("expected:\n", result.get_normal_form())
+    assert result.get_normal_form() == program.get_normal_form()

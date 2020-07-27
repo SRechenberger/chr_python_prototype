@@ -33,8 +33,9 @@ TEMPLATES = {
 
 import ast
 import chr.ast as chrast
+from chr.parser import chr_parse
 from functools import partial
-
+from ast_decompiler import decompile
 
 def comparison(op, args):
     return ast.Compare(
@@ -207,7 +208,7 @@ class Emitter:
 
         processed, _ = program.omega_r()
 
-        print(program.rules)
+        print("\n".join(map(str, processed.rules)))
 
         occs = {
             (symbol, int(arity)): []
@@ -865,6 +866,7 @@ class Emitter:
         self.known_vars = set()
         self.matchings = {}
         self.next_gen_var = 0
+        self.indexes = {}
 
         i, c = occurrence_scheme.occurring_constraint
 
@@ -898,3 +900,15 @@ class Emitter:
         )
 
         return proc, c.symbol, c.arity
+
+
+def chr_compile(solver_class_name, source, target_file=None):
+    chr_ast = chr_parse(source).get_normal_form()
+    e = Emitter()
+    python_ast = e.compile_program(solver_class_name, chr_ast)
+    python_code = decompile(python_ast)
+    if not target_file:
+        return python_code
+
+    with open(target_file, 'w') as f:
+        f.write(python_code)
