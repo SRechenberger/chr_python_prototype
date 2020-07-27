@@ -1,0 +1,3 @@
+constraints test/1.
+
+test(X) <=> tell_eq(X, 1), ask_eq(0, 1) | true.

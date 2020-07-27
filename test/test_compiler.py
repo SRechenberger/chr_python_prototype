@@ -58,3 +58,17 @@ def test_eq_solver():
     solver.eq(a, 1)
     assert b == 1
     assert c == 1
+
+def test_guard_tell():
+    with open("test_files/guard_tell.chr", "r") as f:
+        chr_compile("GuardTell", f.read(), target_file="generated/guard_tell.py")
+
+    from generated.guard_tell import GuardTell
+
+    solver = GuardTell()
+
+    a = solver.fresh_var()
+
+    solver.test(a)
+
+    assert not a.is_bound()

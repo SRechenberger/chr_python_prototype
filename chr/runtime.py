@@ -304,6 +304,15 @@ class BuiltInStore:
     def is_consistent(self):
         return self.consistent
 
+    def commit(self):
+        self.trail = []
+
+    def backtrack(self):
+        for var in self.trail:
+            var.unset()
+
+        self.trail = []
+
 
 class CHRSolver:
 

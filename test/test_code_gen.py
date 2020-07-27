@@ -48,22 +48,26 @@ class GCDSolver(CHRSolver):
 
     def __gcd_1_0(self, id_0, _0):
         if self.chr.alive(id_0):
-            if _0.is_bound() and _0.get_value() < 0:
-                if not self.chr.in_history('error', id_0):
-                    self.chr.add_to_history('error', id_0)
-                    self.chr.delete(id_0)
-                    _local_0 = self.builtin.fresh(value='Number < Zero')
-                    raise CHRFalse(_local_0.get_value())
-                    return True
+            if _0.is_bound() and _0.get_value() < 0 and not self.chr.in_history('error', id_0):
+                self.builtin.commit()
+                self.chr.add_to_history('error', id_0)
+                self.chr.delete(id_0)
+                _local_0 = self.builtin.fresh(value='Number < Zero')
+                raise CHRFalse(_local_0.get_value())
+                return True
+            else:
+                self.builtin.backtrack()
         return False
 
     def __gcd_1_1(self, id_0, _0):
         if self.chr.alive(id_0):
-            if _0.is_bound() and _0.get_value() == 0:
-                if not self.chr.in_history('r1', id_0):
-                    self.chr.add_to_history('r1', id_0)
-                    self.chr.delete(id_0)
-                    return True
+            if _0.is_bound() and _0.get_value() == 0 and not self.chr.in_history('r1', id_0):
+                self.builtin.commit()
+                self.chr.add_to_history('r1', id_0)
+                self.chr.delete(id_0)
+                return True
+            else:
+                self.builtin.backtrack()
         return False
 
     def __gcd_1_2(self, id_0, _1):
@@ -74,20 +78,23 @@ class GCDSolver(CHRSolver):
                 if (
                     _0.is_bound() and
                     _1.is_bound() and
-                    _0.get_value() <= _1.get_value()
+                    _0.get_value() <= _1.get_value() and
+                    not self.chr.in_history('r2', id_0, id_1)
                 ):
-                    if not self.chr.in_history('r2', id_0, id_1):
-                        self.chr.add_to_history('r2', id_0, id_1)
-                        self.chr.delete(id_0)
-                        _local_0 = self.builtin.fresh(value=_1.get_value() - _0.get_value())
-                        if not self.builtin.tell_eq(_2, _local_0):
-                            self.builtin.set_inconsistent()
-                            raise CHRFalse('tell_eq/2', str(_2), str(_local_0))
-                        _fresh_id_1 = self.chr.new()
-                        _fresh_constr_2 = 'gcd/1', _2
-                        self.chr.insert(_fresh_constr_2, _fresh_id_1)
-                        self.__activate_gcd_1(_fresh_id_1, _2)
-                        return True
+                    self.builtin.commit()
+                    self.chr.add_to_history('r2', id_0, id_1)
+                    self.chr.delete(id_0)
+                    _local_0 = self.builtin.fresh(value=_1.get_value() - _0.get_value())
+                    if not self.builtin.tell_eq(_2, _local_0):
+                        self.builtin.set_inconsistent()
+                        raise CHRFalse('tell_eq/2', str(_2), str(_local_0))
+                    _fresh_id_1 = self.chr.new()
+                    _fresh_constr_2 = 'gcd/1', _2
+                    self.chr.insert(_fresh_constr_2, _fresh_id_1)
+                    self.__activate_gcd_1(_fresh_id_1, _2)
+                    return True
+                else:
+                    self.builtin.backtrack()
         return False
 
     def __gcd_1_3(self, id_1, _0):
@@ -98,21 +105,24 @@ class GCDSolver(CHRSolver):
                 if (
                     _0.is_bound() and
                     _1.is_bound() and
-                    _0.get_value() <= _1.get_value()
+                    _0.get_value() <= _1.get_value() and
+                    not self.chr.in_history('r2', id_1, id_0)
                 ):
-                    if not self.chr.in_history('r2', id_1, id_0):
-                        self.chr.add_to_history('r2', id_1, id_0)
-                        self.chr.delete(id_0)
-                        _local_0 = self.builtin.fresh(value=_1.get_value() - _0.get_value())
-                        if not self.builtin.tell_eq(_2, _local_0):
-                            self.builtin.set_inconsistent()
-                            raise CHRFalse('tell_eq/2', str(_2), str(_local_0))
-                        _fresh_id_1 = self.chr.new()
-                        _fresh_constr_2 = 'gcd/1', _2
-                        self.chr.insert(_fresh_constr_2, _fresh_id_1)
-                        self.__activate_gcd_1(_fresh_id_1, _2)
-                        if not self.chr.alive(id_1):
-                            return True
+                    self.builtin.commit()
+                    self.chr.add_to_history('r2', id_1, id_0)
+                    self.chr.delete(id_0)
+                    _local_0 = self.builtin.fresh(value=_1.get_value() - _0.get_value())
+                    if not self.builtin.tell_eq(_2, _local_0):
+                        self.builtin.set_inconsistent()
+                        raise CHRFalse('tell_eq/2', str(_2), str(_local_0))
+                    _fresh_id_1 = self.chr.new()
+                    _fresh_constr_2 = 'gcd/1', _2
+                    self.chr.insert(_fresh_constr_2, _fresh_id_1)
+                    self.__activate_gcd_1(_fresh_id_1, _2)
+                    if not self.chr.alive(id_1):
+                        return True
+                else:
+                    self.builtin.backtrack()
         return False
 '''
 

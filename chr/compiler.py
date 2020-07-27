@@ -1,36 +1,3 @@
-# program looks like this:
-# [
-#   {
-#       "kept": [],
-#       "removed": [("gcd_1", 0, "_1")],
-#       "guard": [("ask=", "_1", 0)]),
-#       "body": []
-#   },
-#   {
-#       "kept": [("gcd_1", 2, "_2")],
-#       "removed": [("gcd_1", 1, "_1")],
-#       "guard": [("bound", "_1"), ("bound", "_2"), ("ask<=", "_1", "_2")],
-#       "body": [
-#           ("fresh", "_3"),
-#           ("tell=", "_3", ("-", "_2", "_1")),
-#           ("gcd/1", "_3")
-#       ]
-#   }
-# ]
-
-TEMPLATES = {
-    "var": "vars[{ var_id }]",
-    "fresh": "{ varname } = self.builtin.fresh()",
-    "tell=": "self.builtin.tell_eq({ var1 }, { var2 })",
-    "ask=" : "{ var1 } == { var2 }",
-    "bound": "{ var1 }.is_bound()",
-    "ask<=": "{ var1 }.get_value() <= { var2 }.get_value()",
-    "ask>=": "{ var1 }.get_value() >= { var2 }.get_value()",
-    "occurrence_head": 'def __{ symbol }_{ occurrence_id }(id, *vars):',
-    "matching_loop_head": 'for i_{ id_idx }, c_{ id_idx } in self.chr.get_iterator(symbol={ constraint_symbol }, fix=True):',
-    "alive": 'self.chr.alive({ id })'
-}
-
 import ast
 import chr.ast as chrast
 from chr.parser import chr_parse
@@ -493,7 +460,7 @@ class Emitter:
                 return compile_get_value(param.name)
             return ast.Name(id=param.name, ctx=ast.Load())
         elif isinstance(param, chrast.Const):
-            return ast.Constant(value=c.val, kind=None)
+            return ast.Constant(value=param.val, kind=None)
         else:
             raise Exception(f'invalid argument for ask-constraint: {param}')
 
@@ -723,35 +690,35 @@ class Emitter:
                 orelse=[]
             )
 
-        history_check = ast.If(
-            test=ast.UnaryOp(
-                op=ast.Not(),
-                operand=compile_in_history(*history_entry)
+        history_check = ast.UnaryOp(
+            op=ast.Not(),
+            operand=compile_in_history(*history_entry)
+        )
+
+
+        guard_check = ast.If(
+            test=ast.BoolOp(
+                op=ast.And(),
+                values=[
+                    *(
+                        self.compile_guard_constraint(guard_constraint)
+                        for guard_constraint in occurrence_scheme.guard
+                    ),
+                    history_check
+                ]
             ),
             body=[
+                ast.Expr(value=compile_builtin_call("commit", args=[])),
                 ast.Expr(value=compile_add_to_history(*history_entry)),
                 *kills,
                 *body,
                 *activates,
                 terminate
             ],
-            orelse=[]
+            orelse=[
+                ast.Expr(value=compile_builtin_call("backtrack", args=[]))
+            ]
         )
-
-        guard_check = history_check
-
-        if occurrence_scheme.guard:
-            guard_check = ast.If(
-                test=ast.BoolOp(
-                    op=ast.And(),
-                    values=list(map(
-                        self.compile_guard_constraint,
-                        occurrence_scheme.guard
-                    ))
-                ),
-                body=[history_check],
-                orelse=[]
-            )
 
         matching = [
             ast.Assign(
