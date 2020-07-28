@@ -40,7 +40,10 @@ def test_constraint():
         )),
         ("triple((X,Y,Z))", Constraint("triple", params=[
             (Var("X"), Var("Y"), Var("Z"))
-        ]))
+        ])),
+        ("X = 1", Constraint("tell_eq", params=[Var("X"), 1])),
+        ("0 == 1", Constraint("ask_eq", params=[0, 1])),
+        ("0 <= 1", Constraint("ask_leq", params=[0, 1]))
     ]
 
     for input, expected_output in test_cases:

@@ -1,6 +1,8 @@
 from chr.ast import *
 from parsy import string, regex, generate
 
+from functools import reduce
+
 '''
 integer  ::= [0-9]+
 string   ::= '"' .* '"'
@@ -49,6 +51,25 @@ def token(s):
     return fun
 
 comma = token(',')
+
+infix_constraints = {
+    "==": "ask_eq",
+    "=": "tell_eq",
+    "<=": "ask_leq",
+    "<": "ask_lt",
+    ">=": "ask_geq",
+    ">": "ask_gt",
+    "!=": "ask_neq"
+}
+
+@generate
+def parse_infix_constraint():
+    left = yield parse_term
+    op = yield reduce(lambda l, r: l | r, map(token, infix_constraints.keys()))
+    right = yield parse_term
+
+    return Term(infix_constraints[op], [left, right])
+
 
 def parse_functor(constraint=False):
     @generate
@@ -142,7 +163,9 @@ def parse_term():
 
 @generate
 def parse_constraint():
-    result = yield lit_white >> parse_functor(constraint=True)
+    result = yield lit_white >> \
+        parse_functor(constraint=True) | \
+        parse_infix_constraint
     return result
 
 @generate
