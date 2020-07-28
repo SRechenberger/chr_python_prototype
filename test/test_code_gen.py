@@ -144,10 +144,10 @@ program = Program(user_constraints=["gcd/1"], rules=[
         removed_head=[Constraint("gcd", params=["_0"])],
         guard=[
             Constraint("ask_bound", params=[Var("_0")]),
-            Constraint("ask_lt", params=[Var("_0"), Const(0)])
+            Constraint("ask_lt", params=[Var("_0"), 0])
         ],
         body=[
-            Constraint("false", params=[Const("Number < Zero")])
+            Constraint("false", params=["Number < Zero"])
         ]
     ),
     # r1 @ gcd(_0) <=> _0 == 0 | true.
@@ -157,7 +157,7 @@ program = Program(user_constraints=["gcd/1"], rules=[
         removed_head=[Constraint("gcd", params=["_0"])],
         guard=[
             Constraint("ask_bound", params=[Var("_0")]),
-            Constraint("ask_eq", params=[Var("_0"), Const(0)])
+            Constraint("ask_eq", params=[Var("_0"), 0])
         ],
         body=[]
     ),

@@ -42,32 +42,34 @@ class Var:
         return type(self) == type(other) \
             and self.name == other.name
 
-    def vars(self):
-        return set([self.name])
+
+def is_ground(term):
+    if isinstance(term, Var):
+        return False
+    if isinstance(term, dict):
+        return all(is_ground(v) for v in term.values())
+    if isinstance(term, (tuple, list)):
+        return all(is_ground(v) for v in term)
+    return True
 
 
-class Const:
-    def __init__(self, val):
-        self.val = val
 
-    def __str__(self):
-        return f'Const({str(self.val)})'
-
-    def __repr__(self):
-        return f'Const({repr(self.val)})'
-
-    def __eq__(self, other):
-        return type(self) == type(other) \
-            and type(self.val) == type(other.val) \
-            and self.val == other.val
-
-    def vars(self):
-        return set()
+def vars(term):
+    if isinstance(term, Var):
+        return set([term.name])
+    if isinstance(term, dict):
+        return set().union(*(vars(v) for v in term.items()))
+    if isinstance(term, (list, tuple)):
+        return set().union(*(vars(v) for v in term))
+    if isinstance(term, HeadConstraint):
+        return set(term.params)
+    if isinstance(term, Term):
+        return set().union(*(vars(a) for a in term.params))
+    return set()
 
 
 class Constraint(Term):
     pass
-
 
 
 class HeadConstraint(Constraint):
@@ -166,15 +168,13 @@ class Rule:
                             normal_params.append(p.name)
 
 
-                    elif isinstance(p, Const) or isinstance(p, Term):
+                    else:
                         new_var = mk_new_var()
                         normal_guard.append(Constraint("ask_eq", params=[
                             Var(new_var), p
                         ]))
                         normal_params.append(new_var)
 
-                    else:
-                        raise Exception(f"invalid head constraint term: {p}")
                 normal_head.append(Constraint(k.symbol, normal_params))
 
         return Rule(
@@ -218,11 +218,11 @@ class OccurrenceScheme:
         return str(self)
 
     def free_vars(self):
-        oc_vars = self.occurring_constraint[1].vars()
+        oc_vars = vars(self.occurring_constraint[1])
         print("oc_vars", oc_vars)
-        head_vars = oc_vars.union(*map(lambda c:c[1].vars(), self.other_constraints))
+        head_vars = oc_vars.union(*(vars(c[1]) for c in self.other_constraints))
         print("head_vars", head_vars)
-        return set().union(*map(lambda c:c.vars(), self.guard + self.body)) \
+        return set().union(*(vars(c) for c in self.guard + self.body)) \
              - head_vars
 
 

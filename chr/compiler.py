@@ -446,10 +446,8 @@ class Emitter:
             if get_value:
                 return compile_get_value(param.name)
             return ast.Name(id=param.name, ctx=ast.Load())
-        elif isinstance(param, chrast.Const):
-            return ast.Constant(value=param.val, kind=None)
         else:
-            raise Exception(f'invalid argument for ask-constraint: {param}')
+            return ast.Constant(value=param, kind=None)
 
 
     def check_for_tell_constraint(self, param, get_value=False):
@@ -459,10 +457,8 @@ class Emitter:
             if get_value:
                 return compile_get_value(param.name)
             return ast.Name(id=param.name, ctx=ast.Load())
-        elif isinstance(param, chrast.Const):
-            return ast.Constant(value=param.val, kind=None)
         else:
-            raise Exception(f'invalid argument for ask-constraint: {param}')
+            return ast.Constant(value=param, kind=None)
 
 
     def compile_term(self, term):
@@ -492,11 +488,8 @@ class Emitter:
         elif isinstance(term, chrast.Var):
             return compile_get_value(term.name)
 
-        elif isinstance(term, chrast.Const):
-            return ast.Constant(value=term.val, kind=None)
-
-
-        raise TypeError(f'not a valid term: {term}')
+        else:
+            return ast.Constant(value=term, kind=None)
 
 
     def compile_fresh(self, varname=None, value_ast=None):
@@ -732,7 +725,7 @@ class Emitter:
             for varname, (i, ix) in self.matchings.items()
         ]
 
-        print(occurrence_scheme.free_vars())
+        print("FREE VARS", occurrence_scheme.free_vars())
 
         init_local_vars = [
             self.compile_fresh(varname=var)[1]

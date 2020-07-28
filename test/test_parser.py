@@ -7,13 +7,20 @@ def test_term():
     test_cases = [
         ("A", Var("A")),
         ("_1", Var("_1")),
-        ("123", Const(123)),
+        ("123", 123),
         ("a", Term("a")),
-        ("b(1,2)", Term("b", params=[Const(1),Const(2)])),
-        ("c(\"blub\", A)", Term("c", params=[Const("blub"), Var("A")])),
+        ("b(1,2)", Term("b", params=[1,2])),
+        ("c(\"blub\", A)", Term("c", params=["blub", Var("A")])),
         ("a_longer_name", Term("a_longer_name")),
         ("c1", Term("c1")),
-        ("'*'(1,2)", Term("*", params=[Const(1), Const(2)]))
+        ("'*'(1,2)", Term("*", params=[1, 2])),
+        ("[]", []),
+        ("[1,]", [1]),
+        ("[1, \"blub\", A]", [1, "blub", Var("A")]),
+        ("{1 : 2}", dict([(1, 2)])),
+        ("{3 : A}", dict([(3, Var("A"))])),
+        ("(1,2)", (1,2)),
+        ("(1,)", (1,))
     ]
 
     for input, expected_output in test_cases:
@@ -25,7 +32,7 @@ def test_term():
 def test_constraint():
     test_cases = [
         ("gcd(N)", Constraint("gcd", params=[Var("N")])),
-        ("gcd(0)", Constraint("gcd", params=[Const(0)])),
+        ("gcd(0)", Constraint("gcd", params=[0])),
         ("gcd(minus(M,N))", Constraint(
             "gcd",
             params=[Term("minus", params=[Var("M"), Var("N")])]
@@ -87,17 +94,17 @@ program = Program(user_constraints=["gcd/1"], rules=[
         removed_head=[Constraint("gcd", params=[Var("_0")])],
         guard=[
             Constraint("ask_bound", params=[Var("_0")]),
-            Constraint("ask_lt", params=[Var("_0"), Const(0)])
+            Constraint("ask_lt", params=[Var("_0"), 0])
         ],
         body=[
-            Constraint("false", params=[Const("Number < Zero")])
+            Constraint("false", params=["Number < Zero"])
         ]
     ),
     # r1 @ gcd(_0) <=> _0 == 0 | true.
     Rule(
         name="r1",
         kept_head=[],
-        removed_head=[Constraint("gcd", params=[Const(0)])],
+        removed_head=[Constraint("gcd", params=[0])],
         guard=[],
         body=[Constraint("true")]
     ),

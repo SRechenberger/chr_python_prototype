@@ -4,11 +4,14 @@ from parsy import string, regex, generate
 '''
 integer  ::= [0-9]+
 string   ::= '"' .* '"'
+key_value ::= term ':' term
+dict     ::= '{' key_value { ',' key_value }* '}'
+list     ::= '[' term { ',' term }* ']'
 symbol   ::= [a-z][a-zA-Z0-9_-]*
 variable ::= [A-Z_][a-zA-Z0-9_-]*
 functor  ::= symbol { '(' term { ',' term }* ')' }
 operator ::= [+*/%-]
-term     ::= variable | functor | integer | string
+term     ::= variable | functor | integer | string | list | dict
 
 rule     ::= { symbol @ } ( simplification | propagation | simpagation )
 
@@ -30,6 +33,22 @@ lit_number = regex(r'[0-9]+')
 lit_string = regex(r'\".*\"')
 lit_white = regex(r'[\n\t ]*')
 lit_signature = regex(r'[a-z][a-zA-Z0-9_-]*/[0-9]+')
+
+
+
+def token(s):
+    if type(s) is not str:
+        raise TypeError(f'{s}: {str} expected; got {type(s)}')
+
+    @generate
+    def fun():
+        nonlocal s
+        t = yield lit_white >> string(s) << lit_white
+        return t
+
+    return fun
+
+comma = token(',')
 
 def parse_functor(constraint=False):
     @generate
@@ -54,6 +73,7 @@ def parse_functor(constraint=False):
         return (Constraint if constraint else Term)(symbol, args)
     return fun
 
+
 @generate
 def parse_variable():
     varname = yield lit_white >> lit_variable
@@ -62,17 +82,62 @@ def parse_variable():
 @generate
 def parse_integer():
     number = yield lit_white >> lit_number
-    return Const(int(number))
+    return int(number)
 
 @generate
 def parse_string():
     string = yield lit_white >> lit_string
-    return Const(string[1:-1])
+    return string[1:-1]
+
+@generate
+def parse_list():
+    yield token('[')
+    ts = yield (parse_term << comma).many()
+    last = yield parse_term.optional()
+    yield token(']')
+
+    return ts + ([last] if last else [])
+
+
+@generate
+def parse_key_value():
+    k = yield parse_term
+    if not is_ground(k):
+        fail(f'{k} not ground')
+    yield token(':')
+    v = yield parse_term
+    return (k ,v)
+
+@generate
+def parse_dict():
+    yield token('{')
+    items = yield (parse_key_value << comma).many()
+    last = yield parse_key_value.optional()
+    yield token('}')
+
+    return dict(items + ([last] if last else []))
+
+@generate
+def parse_tuple():
+    yield token('(')
+    es = yield (lit_white >> parse_term << comma).times(1)
+    last = yield parse_term.optional()
+    yield token(')')
+
+    return tuple(es + ([last] if last else []))
 
 @generate
 def parse_term():
     result = yield lit_white \
-        >> (parse_functor() | parse_variable | parse_string | parse_integer)
+        >> (
+            parse_functor() | \
+            parse_variable | \
+            parse_string | \
+            parse_integer | \
+            parse_list | \
+            parse_dict | \
+            parse_tuple
+        )
     return result
 
 @generate
