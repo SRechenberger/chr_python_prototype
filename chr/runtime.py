@@ -337,3 +337,6 @@ class CHRSolver:
 
     def fresh_var(self, name=None, value=None):
         return self.builtin.fresh(name=None, value=value)
+
+    def dump_chr_store(self):
+        return self.chr.dump()

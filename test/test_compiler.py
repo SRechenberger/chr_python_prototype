@@ -62,7 +62,7 @@ def test_eq_solver():
     solver.eq(a, b)
     solver.eq(c, b)
 
-    dump = solver.chr.dump()
+    dump = solver.dump_chr_store()
     print(dump)
     assert len(dump) == 0
 
