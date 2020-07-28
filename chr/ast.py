@@ -159,7 +159,7 @@ class Rule:
                         if p.name in known_vars:
                             new_var = mk_new_var()
                             known_vars.add(new_var)
-                            normal_guard.append(Constraint("ask_eq", params=[
+                            normal_guard.append(Constraint("tell_eq", params=[
                                 Var(new_var), p
                             ]))
                             normal_params.append(new_var)
@@ -170,7 +170,7 @@ class Rule:
 
                     else:
                         new_var = mk_new_var()
-                        normal_guard.append(Constraint("ask_eq", params=[
+                        normal_guard.append(Constraint("tell_eq", params=[
                             Var(new_var), p
                         ]))
                         normal_params.append(new_var)

@@ -120,7 +120,7 @@ def parse_dict():
 @generate
 def parse_tuple():
     yield token('(')
-    es = yield (lit_white >> parse_term << comma).times(1)
+    es = yield (lit_white >> parse_term << comma).at_least(1)
     last = yield parse_term.optional()
     yield token(')')
 

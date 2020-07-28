@@ -115,6 +115,22 @@ class CHRStore:
 
 
 def unify(left, right):
+    print("unify", left, right)
+    if left is right:
+        return True
+
+    if (
+        isinstance(left, LogicVariable) and
+        isinstance(right, LogicVariable) and
+        (left.find_repr() is not left or right.find_repr() is not right)
+    ):
+        left_repr = left.find_repr()
+        right_repr = right.find_repr()
+        if left_repr.name < right_repr.name:
+            return unify(left_repr, right_repr)
+        return unify(right_repr, left_repr)
+
+
     if isinstance(left, LogicVariable):
         if left.is_bound():
             return unify(left.get_value(), right)
@@ -123,7 +139,7 @@ def unify(left, right):
 
     if isinstance(right, LogicVariable):
         if right.is_bound():
-            return unify(right.get_value(), left)
+            return unify(left, right.get_value())
 
         return right.set_value(left)
 
@@ -151,18 +167,16 @@ class LogicVariable:
         self.delayed = []
 
     def occurs_check(self, term):
-        if term == self:
-            return True
+        if self is term:
+            return False
 
         if type(term) in [list, tuple]:
-            for subterm in term:
-                if self.occurs_check(subterm):
-                    return True
+            return self in term \
+                or any(self.occurs_check(subterm) for subterm in term)
 
         if type(term) is dict:
-            for subterm in term.values():
-                if self.occurs_check(subterm):
-                    return True
+            return self in term.values() \
+                or any(self.occurs_check(subterm) for subterm in term.values())
 
         return False
 
@@ -194,11 +208,12 @@ class LogicVariable:
 
 
     def get_value(self):
-        if self.value == None:
-            return None
 
         if isinstance(self.value, LogicVariable):
             return self.value.get_value()
+
+        if self.value == None:
+            return None
 
         if type(self.value) is list:
             return [
@@ -228,11 +243,12 @@ class LogicVariable:
 
 
     def is_bound(self):
-        if self.value == None:
-            return False
 
         if isinstance(self.value, LogicVariable):
             return self.value.is_bound()
+
+        if self.value == None:
+            return False
 
         return True
 

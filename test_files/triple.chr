@@ -1,3 +1,5 @@
-constraints triple/3, single/1.
+constraints triple/1, single/1.
 
-triple(X, Y, Z) ==> single(X), single(Y), single(Y).
+triple((X, Y, Z)) ==> single(X), single(Y), single(Y).
+triple({1:X, 2:Y, 3:Z}) <=> single(X), single(Y), single(Z).
+triple([X, Y, Z]) <=> single(X), single('+'(Y, Z)).

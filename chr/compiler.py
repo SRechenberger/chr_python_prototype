@@ -442,12 +442,31 @@ class Emitter:
 
 
     def check_for_ask_constraint(self, param, get_value=False):
-        if isinstance(param, chrast.Var) and param.name in self.known_vars:
+        if isinstance(param, chrast.Var):# and param.name in self.known_vars:
             if get_value:
                 return compile_get_value(param.name)
             return ast.Name(id=param.name, ctx=ast.Load())
-        else:
-            return ast.Constant(value=param, kind=None)
+        if isinstance(param, tuple):
+            return ast.Tuple(elts=[
+                self.check_for_ask_constraint(subterm, get_value=get_value)
+                for subterm in param
+            ])
+        if isinstance(param, list):
+            return ast.List(elts=[
+                self.check_for_ask_constraint(subterm, get_value=get_value)
+                for subterm in param
+            ])
+        if isinstance(param, dict):
+            ks, vs = zip(*(
+                (
+                    self.compile_term(key),
+                    self.check_for_ask_constraint(val, get_value=get_value)
+                )
+                for key, val in dict.items()
+            ))
+            return ast.Dict(keys=ks, values=vs)
+
+        return ast.Constant(value=param, kind=None)
 
 
     def check_for_tell_constraint(self, param, get_value=False):
@@ -457,8 +476,28 @@ class Emitter:
             if get_value:
                 return compile_get_value(param.name)
             return ast.Name(id=param.name, ctx=ast.Load())
-        else:
-            return ast.Constant(value=param, kind=None)
+
+        if isinstance(param, tuple):
+            return ast.Tuple(elts=[
+                self.check_for_tell_constraint(subterm, get_value=get_value)
+                for subterm in param
+            ])
+        if isinstance(param, list):
+            return ast.List(elts=[
+                self.check_for_tell_constraint(subterm, get_value=get_value)
+                for subterm in param
+            ])
+        if isinstance(param, dict):
+            ks, vs = zip(*(
+                (
+                    self.compile_term(key),
+                    self.check_for_tell_constraint(val, get_value=get_value)
+                )
+                for key, val in param.items()
+            ))
+            return ast.Dict(keys=ks, values=vs)
+
+        return ast.Constant(value=param, kind=None)
 
 
     def compile_term(self, term):
@@ -485,11 +524,32 @@ class Emitter:
             else:
                 raise Exception(f"unknown operator: {symbol}/{arity}")
 
-        elif isinstance(term, chrast.Var):
+        if isinstance(term, chrast.Var):
             return compile_get_value(term.name)
 
-        else:
-            return ast.Constant(value=term, kind=None)
+
+        if isinstance(term, list):
+            return ast.List(elts=[
+                self.compile_term(subterm)
+                for subterm in term
+            ])
+
+        if isinstance(term, tuple):
+            return ast.Tuple(elts=[
+                self.compile_term(subterm)
+                for subterm in term
+            ])
+
+        if isinstance(term, dict):
+            return ast.List(keys=[
+                *term.keys()
+            ], values=[
+                self.compile_term(val)
+                for val in term.value()
+            ])
+
+
+        return ast.Constant(value=term, kind=None)
 
 
     def compile_fresh(self, varname=None, value_ast=None):

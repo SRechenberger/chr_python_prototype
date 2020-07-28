@@ -19,6 +19,7 @@ def test_term():
         ("[1, \"blub\", A]", [1, "blub", Var("A")]),
         ("{1 : 2}", dict([(1, 2)])),
         ("{3 : A}", dict([(3, Var("A"))])),
+        ("(1,2,3)", (1,2,3)),
         ("(1,2)", (1,2)),
         ("(1,)", (1,))
     ]
@@ -36,7 +37,10 @@ def test_constraint():
         ("gcd(minus(M,N))", Constraint(
             "gcd",
             params=[Term("minus", params=[Var("M"), Var("N")])]
-        ))
+        )),
+        ("triple((X,Y,Z))", Constraint("triple", params=[
+            (Var("X"), Var("Y"), Var("Z"))
+        ]))
     ]
 
     for input, expected_output in test_cases:

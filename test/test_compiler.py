@@ -32,9 +32,20 @@ def test_triple_solver():
     from generated.triple import TripleSolver
 
     solver = TripleSolver()
-    solver.triple(1,2,3)
+    solver.triple((1,2,3))
 
     assert len(solver.chr.dump()) == 4
+
+    solver = TripleSolver()
+    solver.triple({1:"A", 2:"B", 3:"C"})
+
+    assert len(solver.chr.dump()) == 3
+
+    solver = TripleSolver()
+    solver.triple([1, 2, 3])
+
+    assert len(solver.chr.dump()) == 2
+    assert ("single/1", 5) in solver.chr.dump()
 
 
 def test_eq_solver():
