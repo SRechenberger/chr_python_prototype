@@ -28,9 +28,9 @@ signature ::= symbol '/' [0-9]+
 decl ::= 'constraints' signature { ',' signature }* '.'
 '''
 
-lit_symbol = regex(r'[a-z][a-zA-Z0-9_-]*')
+lit_symbol = regex(r'[a-z][a-zA-Z0-9_]*')
 lit_operator = regex(r'\'[^\t\n\r ]+\'')
-lit_variable = regex(r'[A-Z_][a-zA-Z0-9_-]*')
+lit_variable = regex(r'[a-zA-Z0-9_]+')
 lit_number = regex(r'[0-9]+')
 lit_string = regex(r'\".*\"')
 lit_white = regex(r'[\n\t ]*')
@@ -53,14 +53,39 @@ def token(s):
 comma = token(',')
 
 infix_constraints = {
-    "==": "ask_eq",
-    "=": "tell_eq",
-    "<=": "ask_leq",
-    "<": "ask_lt",
-    ">=": "ask_geq",
-    ">": "ask_gt",
-    "!=": "ask_neq"
+    "=!": "tell_eq",
+    "=?": "ask_eq",
+    "<=?": "ask_leq",
+    "<?": "ask_lt",
+    ">=?": "ask_geq",
+    ">?": "ask_gt",
+    "!=?": "ask_neq"
 }
+
+infix_term_ops = [
+    ["*", "/", "%"],
+    ["+", "-"],
+    ["==", "!=", "<=", "<", ">=", ">"],
+    ["and", "or"],
+]
+
+def mk_infix_term_parser(term_parser, operators):
+    @generate
+    def fun():
+        left = yield term_parser
+        chained = []
+        while True:
+            op = yield reduce(lambda l, r: l | r, map(token, operators)).optional()
+            if not op:
+                break
+            right = yield term_parser
+            chained.append((op, right))
+
+        return reduce(lambda l, r: Term(r[0], params=[l, r[1]]), chained, left)
+
+    return fun
+
+
 
 @generate
 def parse_infix_constraint():
@@ -97,7 +122,7 @@ def parse_functor(constraint=False):
 
 @generate
 def parse_variable():
-    varname = yield lit_white >> lit_variable
+    varname = yield lit_white >> string('$') >> lit_variable
     return Var(varname)
 
 @generate
@@ -109,6 +134,11 @@ def parse_integer():
 def parse_string():
     string = yield lit_white >> lit_string
     return string[1:-1]
+
+@generate
+def parse_bool():
+    s = yield lit_white >> (string('False') | string('True'))
+    return s == "True"
 
 @generate
 def parse_list():
@@ -148,7 +178,7 @@ def parse_tuple():
     return tuple(es + ([last] if last else []))
 
 @generate
-def parse_term():
+def parse_atom():
     result = yield lit_white \
         >> (
             parse_functor() | \
@@ -157,9 +187,29 @@ def parse_term():
             parse_integer | \
             parse_list | \
             parse_dict | \
-            parse_tuple
+            parse_tuple | \
+            parse_bool
         )
     return result
+
+@generate
+def parse_term():
+    result = yield lit_white \
+        >> (
+            token('(') >> parse_term << token(')') | \
+            parse_infix_term(infix_term_ops) | \
+            parse_atom
+        )
+    return result
+
+def parse_infix_term(op_table, acc=parse_atom):
+    if not op_table:
+        return acc
+
+    return parse_infix_term(
+        op_table[1:],
+        acc=mk_infix_term_parser(acc, op_table[0])
+    )
 
 @generate
 def parse_constraint():

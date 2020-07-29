@@ -1,0 +1,6 @@
+constraints fib/1, result/1, read/1.
+
+fib($N) <=> $N >? 1 | fib($N-1), fib($N-2).
+fib($N) <=> $N <=? 1 | result($N).
+result($N), result($M) <=> result($N+$M).
+read($N), result($N) <=> true.

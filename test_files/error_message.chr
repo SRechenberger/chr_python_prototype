@@ -1,0 +1,3 @@
+constraints error/1.
+
+error($message) ==> false($message).

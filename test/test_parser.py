@@ -5,23 +5,33 @@ from pprintast import pprintast as ppast
 
 def test_term():
     test_cases = [
-        ("A", Var("A")),
-        ("_1", Var("_1")),
+        ("$A", Var("A")),
+        ("$_1", Var("_1")),
         ("123", 123),
         ("a", Term("a")),
         ("b(1,2)", Term("b", params=[1,2])),
-        ("c(\"blub\", A)", Term("c", params=["blub", Var("A")])),
+        ("c(\"blub\", $A)", Term("c", params=["blub", Var("A")])),
         ("a_longer_name", Term("a_longer_name")),
         ("c1", Term("c1")),
         ("'*'(1,2)", Term("*", params=[1, 2])),
         ("[]", []),
         ("[1,]", [1]),
-        ("[1, \"blub\", A]", [1, "blub", Var("A")]),
+        ("[1, \"blub\", $A]", [1, "blub", Var("A")]),
         ("{1 : 2}", dict([(1, 2)])),
-        ("{3 : A}", dict([(3, Var("A"))])),
+        ("{3 : $A}", dict([(3, Var("A"))])),
         ("(1,2,3)", (1,2,3)),
         ("(1,2)", (1,2)),
-        ("(1,)", (1,))
+        ("(1,)", (1,)),
+        ("1 + 2", Term("+", params=[1,2])),
+        ("1 + 2 == 3 * 4", Term("==",
+            params=[Term("+", params=[1,2]), Term("*", params=[3,4])])
+        ),
+        ("1 == 3 + 4 and False", Term("and",
+            params=[Term("==", params=[
+                1,
+                Term("+", params=[3, 4])
+            ]), False]
+        ))
     ]
 
     for input, expected_output in test_cases:
@@ -32,18 +42,18 @@ def test_term():
 
 def test_constraint():
     test_cases = [
-        ("gcd(N)", Constraint("gcd", params=[Var("N")])),
+        ("gcd($N)", Constraint("gcd", params=[Var("N")])),
         ("gcd(0)", Constraint("gcd", params=[0])),
-        ("gcd(minus(M,N))", Constraint(
+        ("gcd(minus($M,$N))", Constraint(
             "gcd",
             params=[Term("minus", params=[Var("M"), Var("N")])]
         )),
-        ("triple((X,Y,Z))", Constraint("triple", params=[
+        ("triple(($X,$Y,$Z))", Constraint("triple", params=[
             (Var("X"), Var("Y"), Var("Z"))
         ])),
-        ("X = 1", Constraint("tell_eq", params=[Var("X"), 1])),
-        ("0 == 1", Constraint("ask_eq", params=[0, 1])),
-        ("0 <= 1", Constraint("ask_leq", params=[0, 1]))
+        ("$X =! 1", Constraint("tell_eq", params=[Var("X"), 1])),
+        ("0 =? 1", Constraint("ask_eq", params=[0, 1])),
+        ("0 <=? 1", Constraint("ask_leq", params=[0, 1]))
     ]
 
     for input, expected_output in test_cases:
@@ -86,11 +96,11 @@ def test_guard_body():
 
 program_code = '''constraints gcd/1.
 
-error @ gcd(_0) <=> ask_bound(_0), ask_lt(_0, 0) | false("Number < Zero").
+error @ gcd($_0) <=> ask_bound($_0), ask_lt($_0, 0) | false("Number < Zero").
 r1 @ gcd(0) <=> true.
-r2 @ gcd(_0) \\ gcd(_1) <=>
-        ask_bound(_0), ask_bound(_1), ask_leq(_0, _1) |
-    tell_eq(_2, '-'(_1, _0)), gcd(_2).
+r2 @ gcd($_0) \\ gcd($_1) <=>
+        ask_bound($_0), ask_bound($_1), $_0 <=? $_1 |
+    $_2 =! $_1 - $_0, gcd($_2).
 '''
 
 program = Program(user_constraints=["gcd/1"], rules=[

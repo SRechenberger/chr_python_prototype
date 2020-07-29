@@ -1,6 +1,6 @@
 constraints eq/2.
 
-cleanup       @ eq(X, Y) \ eq(X, Y) <=> true.
-transitivity  @ eq(X, Y), eq(Y, Z) ==> eq(X, Z).
-symmetry      @ eq(X, Y) ==> eq(Y, X).
-reflexivity   @ eq(X, Y) <=> X = Y.
+cleanup       @ eq($X, $Y) \ eq($X, $Y) <=> true.
+transitivity  @ eq($X, $Y), eq($Y, $Z) ==> eq($X, $Z).
+symmetry      @ eq($X, $Y) ==> eq($Y, $X).
+reflexivity   @ eq($X, $Y) <=> $X =! $Y.

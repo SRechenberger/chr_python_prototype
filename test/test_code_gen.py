@@ -129,11 +129,11 @@ class GCDSolver(CHRSolver):
 program_code = '''
 constraints gcd/1.
 
-error @ gcd(_0) <=> ask_lt(_0, 0) | false("Number < Zero").
-r1 @ gcd(_0) <=> ask_eq(_0, 0) | true.
-r2 @ gcd(_0) \\ gcd(_1) <=>
-        ask_bound(_0), ask_bound(_1), ask_leq(_0, _1) |
-    tell_eq(_2, '-'(_1, _0)), gcd(_2).
+error @ gcd($_0) <=> $_0 <=? 0 | false("Number < Zero").
+r1 @ gcd($_0) <=> $_0 =? 0 | true.
+r2 @ gcd($_0) \\ gcd($_1) <=>
+        ask_bound($_0), ask_bound($_1), $_0 <=? $_1 |
+    $_2 =! $_1 - $_0, gcd($_2).
 '''
 
 program = Program(user_constraints=["gcd/1"], rules=[

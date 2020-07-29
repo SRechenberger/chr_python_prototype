@@ -1,4 +1,5 @@
 from chr.compiler import chr_compile
+from chr.runtime import CHRFalse
 
 import pytest
 
@@ -83,3 +84,38 @@ def test_guard_tell():
     solver.test(a)
 
     assert not a.is_bound()
+
+def test_error_message():
+    with open("test_files/error_message.chr", "r") as f:
+        chr_compile("ErrorSolver", f.read(), target_file="generated/error_message.py")
+
+    from generated.error_message import ErrorSolver
+
+    solver = ErrorSolver()
+
+    message = "this is an error message!"
+
+    with pytest.raises(CHRFalse, match=message):
+        solver.error(message)
+
+
+def test_fibonacci():
+    with open("test_files/fibonacci.chr", "r") as f:
+        chr_compile("Fibonacci", f.read(), target_file="generated/fibonacci.py")
+
+    from generated.fibonacci import Fibonacci
+
+    def fib(n, r1=1, r0=0):
+        if n == 0:
+            return r0
+        if n == 1:
+            return r1
+        return fib(n-1, r1 + r0, r1)
+
+    solver = Fibonacci()
+
+    for n in range(1, 15):
+        solver.fib(n)
+        r = solver.fresh_var()
+        solver.read(r)
+        assert r == fib(n)
