@@ -15,7 +15,7 @@ class InconsistentBuiltinStoreError(Exception):
     pass
 
 class CHRFalse(Exception):
-    def __init__(self, messages):
+    def __init__(self, *messages):
         self.messages = messages
 
 def all_different(*vals):
@@ -160,11 +160,10 @@ def unify(left, right):
 
 
 class LogicVariable:
-    def __init__(self, name, trail, value=None):
+    def __init__(self, name, store, value=None):
         self.value = value
         self.name = name
-        self.trail = trail
-        self.delayed = []
+        self.store = store
 
     def occurs_check(self, term):
         if self is term:
@@ -183,9 +182,6 @@ class LogicVariable:
     def unset(self):
         self.value = None
 
-    def delay(self, callable):
-        self.delayed.append(callable)
-
     def set_value(self, value):
         if self.occurs_check(value):
             raise Exception(f'{self} occurs in {value}')
@@ -195,10 +191,8 @@ class LogicVariable:
 
         if self.value == None:
             self.value = value
-            self.trail.append(self)
-            for callable in self.delayed:
-                print("callable on", self.name)
-                callable()
+            print(f"{self.name}.trail={self.store.trail}")
+            self.store.trail.append(self)
             return True
 
         if isinstance(self.value, LogicVariable):
@@ -281,7 +275,9 @@ class BuiltInStore:
         self.vars = {}
         self.next_fresh_var = 0
         self.trail = []
-        self.consistent = True
+        self.next_delay_id = 0
+        self.delays = {}
+        self.successfully_called_delays = set()
 
 
     def fresh(self, name=None, value=None):
@@ -299,29 +295,52 @@ class BuiltInStore:
             var_name = f'_VAR{self.next_fresh_var}'
             self.next_fresh_var += 1
 
-        return LogicVariable(var_name, self.trail, value=value)
+        return LogicVariable(var_name, self, value=value)
 
 
     def delay(self, callable, *vars):
+        id = self.next_delay_id
         for var in vars:
-            var.delay(callable)
+            print(f"delay {id} on {var.name}")
+            if var.name in self.delays:
+                self.delays[var.name].append((id, callable))
+            else:
+                self.delays[var.name] = [(id, callable)]
+
+
+        self.next_delay_id += 1
 
 
     def ask_eq(self, x, y):
         return x == y
 
-
     def tell_eq(self, x, y):
         return unify(x, y)
-
-    def set_inconsistent(self):
-        self.consistent = False
 
     def is_consistent(self):
         return self.consistent
 
     def commit(self):
+        trail = self.trail
+        print("trail:", trail)
         self.trail = []
+        print("delays:", self.delays)
+        for var in trail:
+            if var.name in self.delays:
+                for id, f in self.delays[var.name]:
+                    if id not in self.successfully_called_delays:
+                        print(f"call {id} on {var.name}")
+                        if f():
+                            self.successfully_called_delays.add(id)
+
+        # Cleanup
+        for id in self.successfully_called_delays:
+            for v, ds in self.delays.items():
+                self.delays[v] = [
+                    (id1, f)
+                    for (id1, f) in ds
+                    if id1 != id
+                ]
 
     def backtrack(self):
         for var in self.trail:
@@ -336,7 +355,7 @@ class CHRSolver:
         self.builtin, self.chr = BuiltInStore(), CHRStore()
 
     def fresh_var(self, name=None, value=None):
-        return self.builtin.fresh(name=None, value=value)
+        return self.builtin.fresh(name=name, value=value)
 
     def dump_chr_store(self):
         return self.chr.dump()

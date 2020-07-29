@@ -377,7 +377,7 @@ class Emitter:
                     ],
                     keywords=[]
                 ),
-                body=[ast.Return(value=None)],
+                body=[ast.Return(value=ast.Constant(value=True, kind=None))],
                 orelse=[]
             )
             for procname in procnames
@@ -387,20 +387,35 @@ class Emitter:
 
         if len(params) > 1:
             delay = ast.If(
-                test=ast.BoolOp(op=ast.Or(),
+                test=ast.BoolOp(
+                    op=ast.And(),
                     values=[
-                        ast.UnaryOp(
-                            op=ast.Not(),
-                            operand=ast.Call(
-                                func=ast.Attribute(
-                                    value=ast.Name(id=param, ctx=ast.Load()),
+                        ast.UnaryOp(op=ast.Not(), operand=ast.Name(id="delayed")),
+                        ast.BoolOp(op=ast.Or(),
+                            values=[
+                                ast.UnaryOp(
+
+                                    op=ast.Not(),
+                                    operand=ast.Call(
+                                        func=ast.Attribute(
+                                            value=ast.Name(id=param, ctx=ast.Load()),
+                                            attr="is_bound"
+                                        ),
+                                        args=[],
+                                        keywords=[]
+                                    )
+                                )
+                                for param in params[1:]
+                            ]
+                        ) if len(params) > 2 else ast.UnaryOp(op=ast.Not(),
+                            operand=ast.Call(func=ast.Attribute(
+                                    value=ast.Name(id=params[1], ctx=ast.Load()),
                                     attr="is_bound"
                                 ),
                                 args=[],
                                 keywords=[]
                             )
                         )
-                        for param in params[1:]
                     ]
                 ),
                 body=[ast.Expr(
@@ -408,12 +423,20 @@ class Emitter:
                         ast.Lambda(
                             args=ast.arguments(args=[], defaults=[], vararg=None, kwarg=None),
                             body=ast.Call(
-                                func=ast.Name(id=pname, ctx=ast.Load()),
+                                func=ast.Attribute(
+                                    value=ast.Name(id="self", ctx=ast.Load()),
+                                    attr=pname
+                                ),
                                 args=[
                                     ast.Name(id=param, ctx=ast.Load())
                                     for param in params
                                 ],
-                                keywords=[]
+                                keywords=[
+                                    ast.keyword(
+                                        arg="delayed",
+                                        value=ast.Constant(value=True, kind=None)
+                                    )
+                                ]
                             )
                         ),
                         *(ast.Name(id=param, ctx=ast.Load()) for param in params[1:])
@@ -427,15 +450,17 @@ class Emitter:
             args=ast.arguments(
                 args=[
                     ast.arg(arg="self", annotation=None),
-                    *(ast.arg(arg=param, annotation=None) for param in params)
+                    *(ast.arg(arg=param, annotation=None) for param in params),
+                    ast.arg(arg="delayed", annotation=None)
                 ],
-                defaults=[],
+                defaults=[ast.Constant(value=False, kind=None)],
                 vararg=None,
                 kwarg=None
             ),
             body=[
                 *calls,
-                delay
+                delay,
+                ast.Return(value=ast.Constant(value=False, kind=None))
             ],
             decorator_list=[]
         )
@@ -660,7 +685,6 @@ class Emitter:
                 operand=self.compile_guard_constraint(new_builtin_constraint)
             ),
             body=[
-                ast.Expr(value=compile_builtin_call("set_inconsistent", args=[])),
                 ast.Raise(
                     exc=ast.Call(
                         func=ast.Name("CHRFalse", ctx=ast.Load()),
@@ -761,10 +785,10 @@ class Emitter:
                 ]
             ),
             body=[
-                ast.Expr(value=compile_builtin_call("commit", args=[])),
                 ast.Expr(value=compile_add_to_history(*history_entry)),
                 *kills,
                 *body,
+                ast.Expr(value=compile_builtin_call("commit", args=[])),
                 *activates,
                 terminate
             ],

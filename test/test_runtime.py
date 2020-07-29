@@ -106,21 +106,21 @@ def test_tell_eq():
 
 
 def test_logic_variable():
-    trail = []
-    x = rt.LogicVariable('x', trail)
-    y = rt.LogicVariable('y', trail)
+    store = rt.BuiltInStore()
+    x = store.fresh('x')
+    y = store.fresh('y')
     assert rt.unify(x, 1)
     assert x.is_bound()
     assert rt.unify(x, y)
     assert y.get_value() == 1
-    z = rt.LogicVariable('z', trail)
+    z = store.fresh('z')
     assert rt.unify(z, (x,y))
     assert z.get_value() == (1,1)
     assert rt.unify(z, (1,1))
 
 
 def test_occurs_check():
-    trail = []
-    x = rt.LogicVariable('x', trail)
+    store = rt.BuiltInStore()
+    x = store.fresh('x')
     assert not x.occurs_check(x)
     assert x.occurs_check((x,))

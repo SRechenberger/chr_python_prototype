@@ -30,7 +30,7 @@ decl ::= 'constraints' signature { ',' signature }* '.'
 
 lit_symbol = regex(r'[a-z][a-zA-Z0-9_]*')
 lit_operator = regex(r'\'[^\t\n\r ]+\'')
-lit_variable = regex(r'[a-zA-Z0-9_]+')
+lit_variable = regex(r'[a-zA-Z_][a-zA-Z0-9_]*')
 lit_number = regex(r'[0-9]+')
 lit_string = regex(r'\".*\"')
 lit_white = regex(r'[\n\t ]*')

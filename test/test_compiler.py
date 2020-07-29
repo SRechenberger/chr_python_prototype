@@ -1,5 +1,5 @@
 from chr.compiler import chr_compile
-from chr.runtime import CHRFalse
+from chr.runtime import CHRFalse, unify
 
 import pytest
 
@@ -98,6 +98,37 @@ def test_error_message():
     with pytest.raises(CHRFalse, match=message):
         solver.error(message)
 
+def test_leq_solver():
+    #with open("test_files/leq_solver.chr", "r") as f:
+    #    chr_compile("LeqSolver", f.read(), target_file="generated/leq_solver.py")
+
+    from generated.leq_solver import LeqSolver
+
+    solver = LeqSolver()
+
+    with pytest.raises(CHRFalse, match="('ask_leq/2', '1', '0')"):
+        solver.leq(1, 0)
+
+    assert len(solver.dump_chr_store()) == 0
+
+    x = solver.fresh_var("X")
+    y = solver.fresh_var("Y")
+    z = solver.fresh_var("Z")
+
+
+    # x <= y, z <= y, x <= z
+    solver.leq(x, y)
+    solver.leq(z, y)
+    solver.leq(x, z)
+
+    print("before", solver.dump_chr_store())
+
+    print("delays:", solver.builtin.delays)
+    y.set_value(1)
+    print("delays:", solver.builtin.delays)
+
+    print("after", solver.dump_chr_store())
+    assert False
 
 def test_fibonacci():
     with open("test_files/fibonacci.chr", "r") as f:
