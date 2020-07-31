@@ -49,7 +49,6 @@ class CHRStore:
         else:
             self.history[rule_name] = [ids_set]
 
-        print("fired:", rule_name, [(id, self.constraints[id]) for id in ids])
 
     def in_history(self, rule_name, *ids):
         ids_set = set(ids)
@@ -95,12 +94,10 @@ class CHRStore:
                 f'constraint with id {id} already set to {self.constraints[id]}'
             )
         else:
-            print("add:", (id, constraint))
             self.constraints[id] = constraint
 
     def delete(self, id):
         if id in self.constraints:
-            print("delete:", (id, self.constraints[id]))
             del self.constraints[id]
             self.alive_set[id] = False
         else:
@@ -119,7 +116,6 @@ class CHRStore:
 
 
 def unify(left, right):
-    print("unify", left, right)
     if left is right:
         return True
 
@@ -205,7 +201,6 @@ class LogicVariable:
 
         if self.value == None:
             self.value = value
-            print(f"{self.name}.trail={self.store.trail}")
             self.store.trail.append(self)
             return True
 
@@ -314,7 +309,6 @@ class BuiltInStore:
     def delay(self, callable, *vars):
         id = self.next_delay_id
         for var in vars:
-            print(f"delay {id} on {var.name}")
             if var.name in self.delays:
                 self.delays[var.name].append((id, callable))
             else:
@@ -335,14 +329,11 @@ class BuiltInStore:
 
     def commit(self):
         trail = self.trail
-        print("trail:", trail)
         self.trail = []
-        print("delays:", self.delays)
         for var in trail:
             if var.name in self.delays:
                 for id, f in self.delays[var.name]:
                     if id not in self.successfully_called_delays:
-                        print(f"call {id} on {var.name}")
                         if f():
                             self.successfully_called_delays.add(id)
 

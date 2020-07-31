@@ -156,7 +156,6 @@ class Rule:
                 normal_params = []
                 for p in k.params:
                     if isinstance(p, Var):
-                        print("known vars:", known_vars)
                         if p.name in known_vars:
                             new_var = mk_new_var()
                             known_vars.add(new_var)
@@ -230,9 +229,7 @@ class OccurrenceScheme:
 
     def free_vars(self):
         oc_vars = vars(self.occurring_constraint[1])
-        print("oc_vars", oc_vars)
         head_vars = oc_vars.union(*(vars(c[1]) for c in self.other_constraints))
-        print("head_vars", head_vars)
         return set().union(*(vars(c) for c in self.matching + self.guard + self.body)) \
              - head_vars
 

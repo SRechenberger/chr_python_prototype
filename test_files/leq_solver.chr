@@ -1,7 +1,7 @@
 constraints leq/2.
 
 
-leq($_0, $_1) \ leq($_0, $_1) <=> true.
-leq($_0, $_1), leq($_1, $_2) ==> leq($_0, $_2).
-leq($_0, $_1), leq($_1, $_0) <=> $_0 =! $_1.
-leq($_0, $_1) <=> ask_bound($_0), ask_bound($_1) | $_0 <=? $_1.
+reflexivity  @ leq($_0, $_0) <=> true.
+idempotence  @ leq($_0, $_1) \ leq($_0, $_1) <=> true.
+transitivity @ leq($_0, $_1), leq($_1, $_2) ==> leq($_0, $_2).
+antisymmetry @ leq($_0, $_1), leq($_1, $_0) <=> $_0 =! $_1.

@@ -87,7 +87,6 @@ def compile_get_value(var_ast):
     )
 
 def compile_is_bound(varname):
-    print("varname", varname)
     return ast.Call(
         func=ast.Attribute(
             value=varname[0],
@@ -176,7 +175,6 @@ class Emitter:
 
         processed = program
 
-        print("\n".join(map(str, processed.rules)))
 
         occs = {
             (symbol, int(arity)): []
@@ -187,14 +185,12 @@ class Emitter:
             for symbol, arity in map(lambda x:x.split('/'), self.chr_constraints)
         }
 
-        print(constraints)
 
         for rule in processed.rules:
             defn = [
                 self.compile_occurrence(occurrence_scheme)
                 for occurrence_scheme in rule.get_occurrence_schemes()
             ]
-            print(defn)
             for proc, symb, ar in defn:
                 if (symb, ar) in occs:
                     occs[symb,ar].append(proc)
@@ -559,18 +555,20 @@ class Emitter:
                 raise Exception(f"unknown operator: {symbol}/{arity}")
 
         if isinstance(term, chrast.Var):
+            if not known_vars[term.name]:
+                known_vars[term.name] = ast.Name(id=term.name)
             return compile_get_value(known_vars[term.name])
 
 
         if isinstance(term, list):
             return ast.List(elts=[
-                self.compile_term(subterm)
+                self.compile_term(subterm, known_vars)
                 for subterm in term
             ])
 
         if isinstance(term, tuple):
             return ast.Tuple(elts=[
-                self.compile_term(subterm)
+                self.compile_term(subterm, known_vars)
                 for subterm in term
             ])
 
@@ -833,7 +831,6 @@ class Emitter:
 
         for matching in matchings:
             m = chrast.vars(matching)
-            print("m", m)
             if all(v in known_vars for v in chrast.vars(matching)):
                 check, destruct = self.compile_destructuring(
                     known_vars[matching.params[0].name],
@@ -1060,7 +1057,6 @@ class Emitter:
         if not current.kept:
             removed_ids.add('id_0')
 
-        print("free vars", occurrence_scheme)
 
         known_vars = {
             **{var: ast.Name(id=var) for var in vars},
@@ -1073,7 +1069,6 @@ class Emitter:
 
         for matching in matchings:
             m = chrast.vars(matching)
-            print("m", m, "known_vars", known_vars)
             if all(v in known_vars for v in chrast.vars(matching)):
                 check, destruct = self.compile_destructuring(
                     known_vars[matching.params[0].name],
@@ -1129,10 +1124,8 @@ class Emitter:
 
 def chr_compile(solver_class_name, source, target_file=None):
     chr_ast, _ = chr_parse(source).get_normal_form().omega_r()
-    print("chr_ast\n", chr_ast)
     e = Emitter()
     python_ast = e.compile_program(solver_class_name, chr_ast)
-    # ppast(python_ast)
     python_code = decompile(python_ast)
     if not target_file:
         return python_code

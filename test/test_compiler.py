@@ -106,9 +106,6 @@ def test_leq_solver():
 
     solver = LeqSolver()
 
-    with pytest.raises(CHRFalse, match="('ask_leq/2', '1', '0')"):
-        solver.leq(1, 0)
-
     assert len(solver.dump_chr_store()) == 0
 
     x = solver.fresh_var("X")
@@ -118,18 +115,19 @@ def test_leq_solver():
 
     # x <= y, z <= y, x <= z
     solver.leq(x, y)
-    print("x <= y", solver.chr.constraints)
     solver.leq(z, y)
-    print("z <= y", solver.chr.constraints)
     solver.leq(x, z)
-    print("x <= z", solver.chr.constraints)
 
+    dump = solver.dump_chr_store()
+    assert len(dump) == 3
 
-    print("delays:", solver.builtin.delays)
-    y.set_value(1)
-    print("delays:", solver.builtin.delays)
+    solver.leq(z, x)
+    dump = solver.dump_chr_store()
+    print(dump)
+    assert len(dump) == 1
+    assert ('leq/2', x, y) in dump
+    assert ('leq/2', z, y) in dump
 
-    # assert False
 
 def test_fibonacci():
     with open("test_files/fibonacci.chr", "r") as f:
@@ -192,3 +190,33 @@ def test_gcd():
     dump = solver.dump_chr_store()
     assert len(dump) == 1
     assert ("gcd/1", 1) in dump
+
+
+def test_length():
+    with open("test_files/length.chr", "r") as f:
+        chr_compile("LengthSolver", f.read(), target_file="generated/length.py")
+
+    from generated.length import LengthSolver
+
+    solver = LengthSolver()
+
+    l1 = solver.fresh_var()
+    solver.length("Nil", l1)
+
+    assert len(solver.dump_chr_store()) == 0
+    assert l1 == 0
+
+    l2 = solver.fresh_var()
+    solver.length(l2, 0)
+
+    assert len(solver.dump_chr_store()) == 0
+    assert l2 == "Nil"
+
+    ## Will fail, because the recursion will in fact only happen,
+    ## *after* the variable is required.
+    ## Consider calling activate procedure directly after adding
+    ## a constraint.
+    # l3 = solver.fresh_var()
+    # solver.length((1, (2, "Nil")), l3)
+    # assert len(solver.dump_chr_store()) == 0
+    # assert l3 == 2
