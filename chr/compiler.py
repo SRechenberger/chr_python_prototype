@@ -227,7 +227,8 @@ class Emitter:
                     ast.alias(name="LogicVariable", asname=None),
                     ast.alias(name="CHRFalse", asname=None),
                     ast.alias(name="CHRSolver", asname=None),
-                    ast.alias(name="get_value", asname=None)
+                    ast.alias(name="get_value", asname=None),
+                    ast.alias(name="is_bound", asname=None),
                 ],
                 level=0
             ),
@@ -761,8 +762,9 @@ class Emitter:
         for c in occurrence_scheme.body:
             stmts, new_id, args = self.compile_body_constraint(c, known_vars)
             body_constraints += stmts
+            body_constraints.append(ast.Expr(value=compile_builtin_call("commit", [])))
             if new_id and args:
-                activates.append(compile_activate(new_id, args, f'{c.symbol}_{c.arity}'))
+                body_constraints.append(compile_activate(new_id, args, f'{c.symbol}_{c.arity}'))
 
         finalize = ast.Return(value=ast.Constant(value=True, kind=None))
 
@@ -781,7 +783,7 @@ class Emitter:
                 *kills,
                 *body_constraints,
                 ast.Expr(value=compile_builtin_call("commit", [])),
-                *activates,
+                # *activates,
                 finalize
             ]
         )
@@ -914,11 +916,8 @@ class Emitter:
 
 
         val_bound = ast.Call(
-            func=ast.Attribute(
-                value=value_ast,
-                attr="is_bound"
-            ),
-            args=[],
+            func=ast.Name(id="is_bound"),
+            args=[value_ast],
             keywords=[]
         )
 
@@ -971,14 +970,7 @@ class Emitter:
                 ast.Call(
                     func=ast.Name(id="isinstance"),
                     args=[
-                        ast.Call(
-                            func=ast.Attribute(
-                                value=value_ast,
-                                attr="get_value"
-                            ),
-                            args=[],
-                            keywords=[]
-                        ),
+                        compile_get_value(value_ast),
                         ast.Name(id=type(pattern).__name__),
                     ],
                     keywords=[]

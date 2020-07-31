@@ -216,7 +216,7 @@ def test_length():
     ## *after* the variable is required.
     ## Consider calling activate procedure directly after adding
     ## a constraint.
-    # l3 = solver.fresh_var()
-    # solver.length((1, (2, "Nil")), l3)
-    # assert len(solver.dump_chr_store()) == 0
-    # assert l3 == 2
+    l3 = solver.fresh_var()
+    solver.length((1, (2, "Nil")), l3)
+    assert len(solver.dump_chr_store()) == 0
+    assert l3 == 2

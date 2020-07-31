@@ -166,6 +166,12 @@ def get_value(v):
             raise Exception(f"variable {v} not bound")
     return v
 
+def is_bound(v):
+    if isinstance(v, LogicVariable):
+        return v.is_bound()
+
+    return True
+
 class LogicVariable:
     def __init__(self, name, store, value=None):
         self.value = value
