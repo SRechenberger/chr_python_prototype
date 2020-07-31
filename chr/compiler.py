@@ -4,6 +4,8 @@ from chr.parser import chr_parse
 from functools import partial
 from ast_decompiler import decompile
 
+from pprintast import pprintast as ppast
+
 def comparison(op, args):
     return ast.Compare(
         left = args[0],
@@ -75,13 +77,12 @@ def compile_delete(id):
         [ast.Name(id=id, context=ast.Load())]
     )
 
-def compile_get_value(varname):
+def compile_get_value(var_ast):
     return ast.Call(
-        func=ast.Attribute(
-            value=ast.Name(id=varname, ctx=ast.Load()),
-            attr="get_value"
+        func=ast.Name(
+            id="get_value"
         ),
-        args=[],
+        args=[var_ast],
         keywords=[]
     )
 
@@ -121,12 +122,12 @@ ASK_OPS = {
 }
 
 ASK_OPS_GROUNDNESS = {
-    ("eq", 2): (True, True),
+    ("eq", 2): (False, False),
     ("lt", 2): (True, True),
     ("leq", 2): (True, True),
     ("gt", 2): (True, True),
     ("geq", 2): (True, True),
-    ("neq", 2): (True, True),
+    ("neq", 2): (False, False),
     ("bound", 1): (False,)
 }
 
@@ -173,7 +174,7 @@ class Emitter:
 
         self.chr_constraints = set(program.user_constraints)
 
-        processed, _ = program.omega_r()
+        processed = program
 
         print("\n".join(map(str, processed.rules)))
 
@@ -229,7 +230,8 @@ class Emitter:
                     ast.alias(name="all_different", asname=None),
                     ast.alias(name="LogicVariable", asname=None),
                     ast.alias(name="CHRFalse", asname=None),
-                    ast.alias(name="CHRSolver", asname=None)
+                    ast.alias(name="CHRSolver", asname=None),
+                    ast.alias(name="get_value", asname=None)
                 ],
                 level=0
             ),
@@ -386,35 +388,39 @@ class Emitter:
         delay = ast.Pass()
 
         if len(params) > 1:
+            bound_checks = []
+            for param in params[1:]:
+                bound_checks.append(
+                    ast.BoolOp(op=ast.And(), values=[
+                        ast.Call(
+                            func=ast.Name(id="isinstance"),
+                            args=[
+                                ast.Name(id=param),
+                                ast.Name(id="LogicVariable")
+                            ],
+                            keywords=[]
+                        ),
+                        ast.UnaryOp(
+                            op=ast.Not(),
+                            operand=ast.Call(
+                                func=ast.Attribute(
+                                    value=ast.Name(id=param, ctx=ast.Load()),
+                                    attr="is_bound"
+                                ),
+                                args=[],
+                                keywords=[]
+                            )
+                        )
+                    ])
+                )
+
             delay = ast.If(
                 test=ast.BoolOp(
                     op=ast.And(),
                     values=[
                         ast.UnaryOp(op=ast.Not(), operand=ast.Name(id="delayed")),
                         ast.BoolOp(op=ast.Or(),
-                            values=[
-                                ast.UnaryOp(
-
-                                    op=ast.Not(),
-                                    operand=ast.Call(
-                                        func=ast.Attribute(
-                                            value=ast.Name(id=param, ctx=ast.Load()),
-                                            attr="is_bound"
-                                        ),
-                                        args=[],
-                                        keywords=[]
-                                    )
-                                )
-                                for param in params[1:]
-                            ]
-                        ) if len(params) > 2 else ast.UnaryOp(op=ast.Not(),
-                            operand=ast.Call(func=ast.Attribute(
-                                    value=ast.Name(id=params[1], ctx=ast.Load()),
-                                    attr="is_bound"
-                                ),
-                                args=[],
-                                keywords=[]
-                            )
+                            values=bound_checks
                         )
                     ]
                 ),
@@ -466,57 +472,26 @@ class Emitter:
         )
 
 
-    def check_for_ask_constraint(self, param, get_value=False):
-        if isinstance(param, chrast.Var):# and param.name in self.known_vars:
-            if get_value:
-                return compile_get_value(param.name)
-            return ast.Name(id=param.name, ctx=ast.Load())
-        if isinstance(param, tuple):
-            return ast.Tuple(elts=[
-                self.check_for_ask_constraint(subterm, get_value=get_value)
-                for subterm in param
-            ])
-        if isinstance(param, list):
-            return ast.List(elts=[
-                self.check_for_ask_constraint(subterm, get_value=get_value)
-                for subterm in param
-            ])
-        if isinstance(param, dict):
-            ks, vs = zip(*(
-                (
-                    self.compile_term(key),
-                    self.check_for_ask_constraint(val, get_value=get_value)
-                )
-                for key, val in dict.items()
-            ))
-            return ast.Dict(keys=ks, values=vs)
-
-        return ast.Constant(value=param, kind=None)
-
-
-    def check_for_tell_constraint(self, param, get_value=False):
+    def check_for_ask_constraint(self, param, known_vars, get_value=False):
         if isinstance(param, chrast.Var):
-            if param.name not in self.known_vars:
-                self.add_var(param.name)
             if get_value:
-                return compile_get_value(param.name)
-            return ast.Name(id=param.name, ctx=ast.Load())
-
+                return compile_get_value(known_vars[param.name])
+            return known_vars[param.name]
         if isinstance(param, tuple):
             return ast.Tuple(elts=[
-                self.check_for_tell_constraint(subterm, get_value=get_value)
+                self.check_for_ask_constraint(subterm, known_vars, get_value=get_value)
                 for subterm in param
             ])
         if isinstance(param, list):
             return ast.List(elts=[
-                self.check_for_tell_constraint(subterm, get_value=get_value)
+                self.check_for_ask_constraint(subterm, known_vars, get_value=get_value)
                 for subterm in param
             ])
         if isinstance(param, dict):
             ks, vs = zip(*(
                 (
                     self.compile_term(key),
-                    self.check_for_tell_constraint(val, get_value=get_value)
+                    self.check_for_ask_constraint(val, known_vars, get_value=get_value)
                 )
                 for key, val in param.items()
             ))
@@ -525,14 +500,48 @@ class Emitter:
         return ast.Constant(value=param, kind=None)
 
 
-    def compile_term(self, term):
+    def check_for_tell_constraint(self, param, known_vars, get_value=False):
+        if isinstance(param, chrast.Var):
+            if param.name not in known_vars:
+                var_ast = ast.Name(id=param.name, ctx=ast.Load())
+                known_vars[param.name] = var_ast
+            else:
+                var_ast = known_vars[param.name]
+            if get_value:
+                return compile_get_value(known_vars[param.name])
+            return var_ast
+
+        if isinstance(param, tuple):
+            return ast.Tuple(elts=[
+                self.check_for_tell_constraint(subterm, known_vars, get_value=get_value)
+                for subterm in param
+            ])
+        if isinstance(param, list):
+            return ast.List(elts=[
+                self.check_for_tell_constraint(subterm, known_vars, get_value=get_value)
+                for subterm in param
+            ])
+        if isinstance(param, dict):
+            ks, vs = zip(*(
+                (
+                    self.compile_term(key),
+                    self.check_for_tell_constraint(val, known_vars, get_value=get_value)
+                )
+                for key, val in param.items()
+            ))
+            return ast.Dict(keys=ks, values=vs)
+
+        return ast.Constant(value=param, kind=None)
+
+
+    def compile_term(self, term, known_vars):
         if isinstance(term, chrast.Term):
             symbol = term.symbol
             arity = len(term.params)
             subterms = []
 
             for subterm in term.params:
-                subterm_eval = self.compile_term(subterm)
+                subterm_eval = self.compile_term(subterm, known_vars)
                 subterms += [subterm_eval]
 
             if symbol == '-' and arity == 1:
@@ -550,7 +559,7 @@ class Emitter:
                 raise Exception(f"unknown operator: {symbol}/{arity}")
 
         if isinstance(term, chrast.Var):
-            return compile_get_value(term.name)
+            return compile_get_value(known_vars[term.name])
 
 
         if isinstance(term, list):
@@ -594,13 +603,13 @@ class Emitter:
         return varname, stmt
 
 
-    def compile_tell_constraint(self, symbol, params):
+    def compile_tell_constraint(self, symbol, params, known_vars):
         arity = len(params)
         if (symbol, arity) not in TELL_OPS:
             raise Exception(f'unknown symbol: {symbol}/{arity}')
 
         prepared_params = [
-            self.check_for_tell_constraint(param, get_value=force_ground)
+            self.check_for_tell_constraint(param, known_vars, get_value=force_ground)
             for param, force_ground
             in zip(params, TELL_OPS_GROUNDNESS[symbol, arity])
         ]
@@ -608,13 +617,13 @@ class Emitter:
         return TELL_OPS[symbol, arity](prepared_params)
 
 
-    def compile_ask_constraint(self, symbol, params):
+    def compile_ask_constraint(self, symbol, params, known_vars):
         arity = len(params)
         if (symbol, arity) not in ASK_OPS:
             raise Exception(f'unknown symbol: {symbol}/{arity}')
 
         prepared_params = [
-            self.check_for_ask_constraint(param, get_value=force_ground)
+            self.check_for_ask_constraint(param, known_vars, get_value=force_ground)
             for param, force_ground
             in zip(params, ASK_OPS_GROUNDNESS[symbol, arity])
         ]
@@ -622,7 +631,7 @@ class Emitter:
         return result
 
 
-    def compile_body_constraint(self, c):
+    def compile_body_constraint(self, c, known_vars):
         symbol = c.symbol
         params = c.params
 
@@ -633,19 +642,23 @@ class Emitter:
         for param in params:
             if isinstance(param, chrast.Var):
                 vars.append(param.name)
+                if param.name not in known_vars or not known_vars[param.name]:
+                    known_vars[param.name] = ast.Name(id=param.name)
+                    inits.append(self.compile_fresh(varname=param.name)[1])
             else:
-                value_ast = self.compile_term(param)
+                value_ast = self.compile_term(param, known_vars)
                 var, init = self.compile_fresh(value_ast=value_ast)
 
                 inits += [init]
                 vars.append(var)
-                self.known_vars.add(var)
+                known_vars[var] = ast.Name(id=var)
+
 
         if symbol == "false":
             false_stmt = ast.Raise(
                 exc=ast.Call(
                     func=ast.Name(id="CHRFalse"),
-                    args=[compile_get_value(var) for var in vars],
+                    args=[compile_get_value(known_vars[var]) for var in vars],
                     keywords=[]
                 ),
                 cause=None
@@ -664,7 +677,7 @@ class Emitter:
                 targets=[ast.Name(id=new_constr, ctx=ast.Load())],
                 value=ast.Tuple(elts=[
                     ast.Constant(value=c.signature, kind=None),
-                    *[ast.Name(id=var) for var in vars]
+                    *[known_vars[var] for var in vars]
                 ])
             )
 
@@ -675,14 +688,14 @@ class Emitter:
                 )
             )
 
-            return [*inits, new_id_stmt, new_constr_stmt, insert_stmt], new_id, [ast.Name(id=var) for var in vars]
+            return [*inits, new_id_stmt, new_constr_stmt, insert_stmt], new_id, [known_vars[var] for var in vars]
 
         new_builtin_constraint = chrast.Constraint(symbol, list(map(chrast.Var, vars)))
 
         builtin_stmt = ast.If(
             test=ast.UnaryOp(
                 op=ast.Not(),
-                operand=self.compile_guard_constraint(new_builtin_constraint)
+                operand=self.compile_guard_constraint(new_builtin_constraint, known_vars)
             ),
             body=[
                 ast.Raise(
@@ -693,7 +706,7 @@ class Emitter:
                             *(
                                 ast.Call(
                                     func=ast.Name(id="str"),
-                                    args=[ast.Name(id=vname)],
+                                    args=[known_vars[vname]],
                                     keywords=[]
                                 )
                                 for vname in vars
@@ -710,125 +723,258 @@ class Emitter:
         return [*inits, builtin_stmt], None, None
 
 
-    def compile_guard_constraint(self, c):
+    def compile_guard_constraint(self, c, known_vars):
         cat, symbol = c.symbol.split('_')
 
         if cat == 'ask':
-            return self.compile_ask_constraint(symbol, c.params)
+            return self.compile_ask_constraint(symbol, c.params, known_vars)
         elif cat == 'tell':
-            return self.compile_tell_constraint(symbol, c.params)
+            return self.compile_tell_constraint(symbol, c.params, known_vars)
 
 
-    def compile_body(self, i, occurrence_scheme):
+    def compile_body(self, total_heads, known_vars, removed_ids, occurrence_scheme):
 
-        idxs = list(self.indexes.keys())
+        ids = [f'id_{i}' for i in range(0, total_heads)]
 
-        body = []
-
-        body_constraints = (
-            c for c in occurrence_scheme.body
-        )
-
-        activates = []
-
-        for constr in body_constraints:
-            compiled_constr, new_id, constr_args = self.compile_body_constraint(constr)
-            body += compiled_constr
-            if constr.signature in self.chr_constraints:
-                activates += [compile_activate(
-                    new_id,
-                    constr_args,
-                    f'{constr.symbol}_{constr.arity}'
-                )]
-
-
-        history_entry = (
-            occurrence_scheme.rule_name,
-            [f'id_{ix}' for ix in idxs]
-        )
-
-        kills = [
-            ast.Expr(value=compile_delete(f'id_{id}'))
-            for id, kept in self.indexes.items()
-            if not kept
-        ]
-
-        terminate = ast.Return(
-            value=ast.Constant(value=True, kind=None)
-        )
-
-        if occurrence_scheme.occurring_constraint[1].kept:
-            terminate = ast.If(
-                test=ast.UnaryOp(
-                    op=ast.Not(),
-                    operand=compile_alive(f"id_{i}")
-                ),
-                body=[terminate],
-                orelse=[]
-            )
-
-        history_check = ast.UnaryOp(
-            op=ast.Not(),
-            operand=compile_in_history(*history_entry)
-        )
-
-
-        guard_check = ast.If(
-            test=ast.BoolOp(
-                op=ast.And(),
-                values=[
-                    *(
-                        self.compile_guard_constraint(guard_constraint)
-                        for guard_constraint in occurrence_scheme.guard
-                    ),
-                    history_check
-                ]
-            ),
-            body=[
-                ast.Expr(value=compile_add_to_history(*history_entry)),
-                *kills,
-                *body,
-                ast.Expr(value=compile_builtin_call("commit", args=[])),
-                *activates,
-                terminate
-            ],
-            orelse=[
-                ast.Expr(value=compile_builtin_call("backtrack", args=[]))
-            ]
-        )
-
-        matching = [
-            ast.Assign(
-                targets=[ast.Name(id=varname, context=ast.Load())],
-                value=ast.Subscript(
-                    value=ast.Name(id=f'c_{i}'),
-                    slice=ast.Index(value=ast.Constant(value=ix+1, kind=None)),
-                    ctx=ast.Load()
-                )
-            )
-            for varname, (i, ix) in self.matchings.items()
-        ]
-
-        print("FREE VARS", occurrence_scheme.free_vars())
-
-        init_local_vars = [
-            self.compile_fresh(varname=var)[1]
-            for var in occurrence_scheme.free_vars()
-        ]
-
-        body = ast.If(
-            test=ast.BoolOp(
-                op=ast.And(),
-                values=[
-                    compile_alive(f'id_{k}')
-                    for k in idxs
-                ] + ([compile_all_different(idxs)] if len(idxs) > 1 else [])
-            ),
-            body=matching + init_local_vars + [guard_check],
+        to_return = ast.If(
+            test=ast.BoolOp(op=ast.And(), values=[
+                compile_alive(id)
+                for id in ids
+            ]),
             orelse=[]
         )
 
-        return body
+
+        guarded_body = ast.If(
+            test=ast.BoolOp(op=ast.And(), values=[
+                self.compile_guard_constraint(c, known_vars)
+                for c in occurrence_scheme.guard
+            ]),
+            orelse=[ast.Expr(value=compile_builtin_call("backtrack", []))]
+        )
+
+        to_return.body = [guarded_body]
+
+        kills = [ast.Expr(value=compile_delete(id)) for id in removed_ids]
+
+        body_constraints = []
+        activates = []
+
+        for c in occurrence_scheme.body:
+            stmts, new_id, args = self.compile_body_constraint(c, known_vars)
+            body_constraints += stmts
+            if new_id and args:
+                activates.append(compile_activate(new_id, args, f'{c.symbol}_{c.arity}'))
+
+        finalize = ast.Return(value=ast.Constant(value=True, kind=None))
+
+        if occurrence_scheme.occurring_constraint[1].kept:
+            finalize = ast.If(
+                test=ast.UnaryOp(op=ast.Not(), operand=compile_alive("id_0")),
+                orelse=[],
+                body=[finalize]
+            )
+
+        history_checked_body = ast.If(
+            test=ast.UnaryOp(op=ast.Not(), operand=compile_in_history(occurrence_scheme.rule_name, ids)),
+            orelse=[],
+            body=[
+                ast.Expr(value=compile_add_to_history(occurrence_scheme.rule_name, ids)),
+                *kills,
+                *body_constraints,
+                ast.Expr(value=compile_builtin_call("commit", [])),
+                *activates,
+                finalize
+            ]
+        )
+
+
+
+        if occurrence_scheme.guard:
+            guarded_body.body = [history_checked_body]
+
+        else:
+            to_return.body = [history_checked_body]
+
+        return to_return
+
+
+    def compile_matching_loops(self, i, head_constraints, matchings, known_vars, removed_ids, occurrence_scheme):
+        if not head_constraints:
+            if matchings:
+                raise Exception(f"there are still unchecked matchings: {matchings}")
+            return self.compile_body(i, known_vars, removed_ids, occurrence_scheme)
+
+        current = head_constraints[0][1]
+
+        symbol = current.symbol
+        arg_vars = current.params
+        arity = current.arity
+
+        id_string = f'id_{i}'
+        c_string = f'c_{i}'
+
+        if not current.kept:
+            removed_ids.add(id_string)
+
+        known_vars.update(
+            dict(zip(arg_vars, [
+                ast.Subscript(
+                    value=ast.Name(id=c_string),
+                    slice=ast.Index(value=ast.Constant(value=j+1, kind=None))
+                )
+                for j in range(0, arity)
+            ]))
+        )
+
+        checks = [compile_all_different(range(0, i+1))]
+        destructs = []
+        uncheckable_matchings = []
+
+        for matching in matchings:
+            m = chrast.vars(matching)
+            print("m", m)
+            if all(v in known_vars for v in chrast.vars(matching)):
+                check, destruct = self.compile_destructuring(
+                    known_vars[matching.params[0].name],
+                    matching.params[1],
+                    known_vars
+                )
+                checks += check
+                destructs += destruct
+            else:
+                uncheckable_matchings.append(matching)
+
+        check_and_destr = self.compile_matching_loops(
+            i+1,
+            head_constraints[1:],
+            uncheckable_matchings,
+            known_vars,
+            removed_ids,
+            occurrence_scheme
+        )
+        if checks:
+            check_and_destr = ast.If(
+                test=ast.BoolOp(op=ast.And(), values=checks),
+                orelse=[ast.Expr(value=compile_builtin_call("backtrack", []))],
+                body=[
+                    *destructs,
+                    check_and_destr
+                ]
+            )
+
+        matching_loop = ast.For(
+            target=ast.Tuple(elts=[
+                ast.Name(id=id_string),
+                ast.Name(id=c_string)
+            ]),
+            iter=ast.Call(
+                func=ast.Attribute(
+                    value=ast.Attribute(
+                        value=ast.Name(id="self"),
+                        attr="chr"
+                    ),
+                    attr="get_iterator"
+                ),
+                args=[],
+                keywords=[
+                    ast.keyword(arg="symbol", value=ast.Constant(
+                        value=f'{symbol}/{arity}',
+                        kind=None
+                    )),
+                    ast.keyword(arg="fix", value=ast.Constant(value=True, kind=None))
+                ]
+            ),
+            body=[check_and_destr],
+            orelse=[]
+        )
+
+        return matching_loop
+
+
+    def compile_destructuring(self, value_ast, pattern, known_vars):
+        if isinstance(pattern, chrast.Var):
+            if pattern.name in known_vars:
+                if known_vars[pattern.name]:
+                    return [
+                        ast.Compare(
+                            left=known_vars[pattern.name],
+                            ops=[ast.Eq()],
+                            comparators=[value_ast]
+                        )
+                    ], []
+                else:
+                    known_vars[pattern.name] = value_ast
+                    return [], []
+
+            known_vars[pattern.name] = value_ast
+            return [], [
+                ast.Assign(
+                    targets=ast.Name(id=pattern.name),
+                    value=value_ast
+                )
+            ]
+
+
+        val_bound = ast.Call(
+            func=ast.Attribute(
+                value=value_ast,
+                attr="is_bound"
+            ),
+            args=[],
+            keywords=[]
+        )
+
+        if isinstance(pattern, (tuple, list, dict)):
+
+            iter = enumerate(pattern) if isinstance(pattern, (tuple, list)) else pattern.items()
+
+            checks, stmts = [], []
+
+            for key, subpattern in iter:
+                check, stmt = self.compile_destructuring(
+                    ast.Subscript(
+                        value=value_ast,
+                        slice=ast.Index(value=ast.Constant(
+                            value=key,
+                            kind=None
+                        ))
+                    ),
+                    subpattern,
+                    known_vars
+                )
+
+                checks += check
+                stmts += stmt
+
+            return [
+                val_bound,
+                ast.Call(
+                    func=ast.Name(id="isinstance"),
+                    args=[
+                        ast.Call(
+                            func=ast.Attribute(
+                                value=value_ast,
+                                attr="get_value"
+                            ),
+                            args=[],
+                            keywords=[]
+                        ),
+                        ast.Name(id=type(pattern).__name__),
+                    ],
+                    keywords=[]
+                ),
+                *checks
+            ], stmts
+
+        return [
+            val_bound,
+            ast.Compare(
+                left=value_ast,
+                ops=[ast.Eq()],
+                comparators=[ast.Constant(value=pattern, kind=None)]
+            )
+        ], []
 
 
     def compile_matching(self, i, others, occurrence_scheme):
@@ -876,26 +1022,71 @@ class Emitter:
 
 
     def compile_occurrence(self, occurrence_scheme):
-        if not isinstance(occurrence_scheme, chrast.OccurrenceScheme):
-            raise TypeError(f'{occurrence_scheme} is not an instance of {chrast.OccurrenceScheme}')
+        _, current = occurrence_scheme.occurring_constraint
+        heads = occurrence_scheme.other_constraints
+        matchings = occurrence_scheme.matching
 
-        self.known_vars = set()
-        self.matchings = {}
-        self.next_gen_var = 0
-        self.indexes = {}
 
-        i, c = occurrence_scheme.occurring_constraint
+        symbol = current.symbol
+        arity = current.arity
+        vars = current.params
+        idx = current.occurrence_idx
+        id = 'id_0'
 
-        for var in c.params:
-            self.add_var(var)
+        removed_ids = set()
 
-        self.indexes[i] = c.kept
+        if not current.kept:
+            removed_ids.add('id_0')
 
-        args = [ast.arg(arg=f'id_{i}', annotation=None)]
-        args += [ast.arg(arg=param, annotation=None) for param in c.params]
+        print("free vars", occurrence_scheme)
 
-        procname = f'__{c.symbol}_{c.arity}_{c.occurrence_idx}'
+        known_vars = {
+            **{var: ast.Name(id=var) for var in vars},
+            **{var: None for var in occurrence_scheme.free_vars()}
+        }
 
+        checks, destructs = [], []
+        uncheckable_matchings = []
+
+
+        for matching in matchings:
+            m = chrast.vars(matching)
+            print("m", m, "known_vars", known_vars)
+            if all(v in known_vars for v in chrast.vars(matching)):
+                check, destruct = self.compile_destructuring(
+                    known_vars[matching.params[0].name],
+                    matching.params[1],
+                    known_vars
+                )
+                checks += check
+                destructs += destruct
+            else:
+                uncheckable_matchings.append(matching)
+
+
+        check_and_destr = [
+            *destructs,
+            self.compile_matching_loops(
+                1,
+                heads,
+                uncheckable_matchings,
+                known_vars,
+                removed_ids,
+                occurrence_scheme
+            )
+        ]
+
+        if checks:
+            check_and_destr = [ast.If(
+                test=ast.BoolOp(op=ast.And(), values=checks),
+                orelse=[ast.Expr(value=compile_builtin_call("backtrack", []))],
+                body=check_and_destr
+            )]
+
+        args = [ast.arg(arg=f'id_0', annotation=None)]
+        args += [ast.arg(arg=param, annotation=None) for param in current.params]
+
+        procname = f'__{symbol}_{arity}_{idx}'
         proc = ast.FunctionDef(
             name=procname,
             args=ast.arguments(
@@ -905,23 +1096,21 @@ class Emitter:
                 kwarg=None
             ),
             body=[
-                self.compile_matching(
-                    i,
-                    occurrence_scheme.other_constraints,
-                    occurrence_scheme
-                ),
+                *check_and_destr,
                 ast.Return(ast.Constant(value=False, kind=None))
             ],
             decorator_list=[]
         )
 
-        return proc, c.symbol, c.arity
+        return proc, symbol, arity
 
 
 def chr_compile(solver_class_name, source, target_file=None):
-    chr_ast = chr_parse(source).get_normal_form()
+    chr_ast, _ = chr_parse(source).get_normal_form().omega_r()
+    print("chr_ast\n", chr_ast)
     e = Emitter()
     python_ast = e.compile_program(solver_class_name, chr_ast)
+    # ppast(python_ast)
     python_code = decompile(python_ast)
     if not target_file:
         return python_code

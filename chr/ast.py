@@ -139,7 +139,7 @@ class Rule:
     def get_normal_form(self):
         normal_kept = []
         normal_removed = []
-        normal_guard = []
+        matching = []
         next_var_id = 0
         known_vars = set()
 
@@ -156,10 +156,11 @@ class Rule:
                 normal_params = []
                 for p in k.params:
                     if isinstance(p, Var):
+                        print("known vars:", known_vars)
                         if p.name in known_vars:
                             new_var = mk_new_var()
                             known_vars.add(new_var)
-                            normal_guard.append(Constraint("tell_eq", params=[
+                            matching.append(Constraint("ask_match", params=[
                                 Var(new_var), p
                             ]))
                             normal_params.append(new_var)
@@ -170,27 +171,37 @@ class Rule:
 
                     else:
                         new_var = mk_new_var()
-                        normal_guard.append(Constraint("tell_eq", params=[
+                        matching.append(Constraint("ask_match", params=[
                             Var(new_var), p
                         ]))
                         normal_params.append(new_var)
 
                 normal_head.append(Constraint(k.symbol, normal_params))
 
-        return Rule(
+        return NormalizedRule(
             self.name,
             normal_kept,
             normal_removed,
-            normal_guard + self.guard,
+            matching,
+            self.guard,
             [c for c in self.body if c.symbol != "true"]
         )
 
+class NormalizedRule(Rule):
+    def __init__(self, name, kept, removed, matching, guard, body):
+        self.name = name
+        self.kept_head = kept
+        self.removed_head = removed
+        self.matching = matching
+        self.guard = guard
+        self.body = body
 
 class OccurrenceScheme:
-    def __init__(self, rule_name, occurring_constraint, other_constraints, guard, body):
+    def __init__(self, rule_name, occurring_constraint, other_constraints, matching, guard, body):
         self.rule_name = rule_name
         self.occurring_constraint = occurring_constraint
         self.other_constraints = other_constraints
+        self.matching = matching
         self.guard = guard
         self.body = body
 
@@ -222,22 +233,23 @@ class OccurrenceScheme:
         print("oc_vars", oc_vars)
         head_vars = oc_vars.union(*(vars(c[1]) for c in self.other_constraints))
         print("head_vars", head_vars)
-        return set().union(*(vars(c) for c in self.guard + self.body)) \
+        return set().union(*(vars(c) for c in self.matching + self.guard + self.body)) \
              - head_vars
 
 
 
 class ProcessedRule:
-    def __init__(self, name, head, guard, body):
+    def __init__(self, name, head, matching, guard, body):
         self.name = name
         self.head = head
+        self.matching = matching
         self.body = body
         self.guard = guard
 
     def get_occurrence_scheme(self, idx):
         indexed = list(enumerate(self.head))
         constraint = indexed.pop(idx)
-        return OccurrenceScheme(self.name, constraint, indexed, self.guard, self.body)
+        return OccurrenceScheme(self.name, constraint, indexed, self.matching, self.guard, self.body)
 
     def get_occurrence_schemes(self):
         for idx, _ in enumerate(self.head):
@@ -291,7 +303,7 @@ class Program:
         symbols = {}
 
         rules = []
-        for rule in self.rules:
+        for rule in (rule for rule in self.rules):
             head = []
             for constr in rule.removed_head:
                 if constr.symbol in symbols:
@@ -324,6 +336,7 @@ class Program:
             rules.append(ProcessedRule(
                 name=rule.name,
                 head=head,
+                matching=rule.matching,
                 guard=rule.guard,
                 body=rule.body
             ))

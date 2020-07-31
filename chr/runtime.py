@@ -49,6 +49,8 @@ class CHRStore:
         else:
             self.history[rule_name] = [ids_set]
 
+        print("fired:", rule_name, [(id, self.constraints[id]) for id in ids])
+
     def in_history(self, rule_name, *ids):
         ids_set = set(ids)
         if rule_name not in self.history:
@@ -93,10 +95,12 @@ class CHRStore:
                 f'constraint with id {id} already set to {self.constraints[id]}'
             )
         else:
+            print("add:", (id, constraint))
             self.constraints[id] = constraint
 
     def delete(self, id):
         if id in self.constraints:
+            print("delete:", (id, self.constraints[id]))
             del self.constraints[id]
             self.alive_set[id] = False
         else:
@@ -158,6 +162,13 @@ def unify(left, right):
 
     return left == right
 
+def get_value(v):
+    if isinstance(v, LogicVariable):
+        if v.is_bound():
+            return v.get_value()
+        else:
+            raise Exception(f"variable {v} not bound")
+    return v
 
 class LogicVariable:
     def __init__(self, name, store, value=None):
@@ -181,6 +192,9 @@ class LogicVariable:
 
     def unset(self):
         self.value = None
+
+    def __getitem__(self, key):
+        return self.get_value()[key]
 
     def set_value(self, value):
         if self.occurs_check(value):
@@ -267,7 +281,6 @@ class LogicVariable:
             return self.get_value() == other
 
         return False
-
 
 class BuiltInStore:
 

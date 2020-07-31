@@ -56,9 +56,9 @@ def test_eq_solver():
     from generated.eq_solver import EqSolver
 
     solver = EqSolver()
-    a = solver.fresh_var()
-    b = solver.fresh_var()
-    c = solver.fresh_var()
+    a = solver.fresh_var("a")
+    b = solver.fresh_var("b")
+    c = solver.fresh_var("c")
 
     solver.eq(a, b)
     solver.eq(c, b)
@@ -99,8 +99,8 @@ def test_error_message():
         solver.error(message)
 
 def test_leq_solver():
-    #with open("test_files/leq_solver.chr", "r") as f:
-    #    chr_compile("LeqSolver", f.read(), target_file="generated/leq_solver.py")
+    with open("test_files/leq_solver.chr", "r") as f:
+        chr_compile("LeqSolver", f.read(), target_file="generated/leq_solver.py")
 
     from generated.leq_solver import LeqSolver
 
@@ -118,17 +118,18 @@ def test_leq_solver():
 
     # x <= y, z <= y, x <= z
     solver.leq(x, y)
+    print("x <= y", solver.chr.constraints)
     solver.leq(z, y)
+    print("z <= y", solver.chr.constraints)
     solver.leq(x, z)
+    print("x <= z", solver.chr.constraints)
 
-    print("before", solver.dump_chr_store())
 
     print("delays:", solver.builtin.delays)
     y.set_value(1)
     print("delays:", solver.builtin.delays)
 
-    print("after", solver.dump_chr_store())
-    assert False
+    # assert False
 
 def test_fibonacci():
     with open("test_files/fibonacci.chr", "r") as f:
@@ -150,3 +151,44 @@ def test_fibonacci():
         r = solver.fresh_var()
         solver.read(r)
         assert r == fib(n)
+
+
+def test_match():
+    with open("test_files/match_solver.chr", "r") as f:
+        chr_compile("MatchTest", f.read(), target_file="generated/match_test.py")
+
+    from generated.match_test import MatchTest
+
+    solver = MatchTest()
+
+    x, y = solver.fresh_var(), solver.fresh_var()
+    solver.match(x)
+    solver.match(y)
+
+    assert x != y
+    assert len(solver.dump_chr_store()) == 2
+
+def test_gcd():
+    with open("test_files/gcd_solver.chr", "r") as f:
+        chr_compile("GCDSolver", f.read(), target_file="generated/gcd_solver.py")
+
+    from generated.gcd_solver import GCDSolver
+
+    solver = GCDSolver()
+
+    x = solver.fresh_var()
+
+    solver.gcd(100)
+    solver.gcd(66)
+
+    dump = solver.dump_chr_store()
+    assert len(dump) == 1
+    assert ("gcd/1", 2) in dump
+    solver.gcd(x)
+    dump = solver.dump_chr_store()
+    assert len(dump) == 2
+    solver.builtin.tell_eq(x, 3)
+    solver.builtin.commit()
+    dump = solver.dump_chr_store()
+    assert len(dump) == 1
+    assert ("gcd/1", 1) in dump
