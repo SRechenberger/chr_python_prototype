@@ -38,7 +38,7 @@ def test_triple_solver():
     assert len(solver.chr.dump()) == 4
 
     solver = TripleSolver()
-    solver.triple({1:"A", 2:"B", 3:"C"})
+    solver.triple({1:"A", 2:"B", "scheiss":"C"})
 
     assert len(solver.chr.dump()) == 3
 

@@ -931,7 +931,29 @@ class Emitter:
 
             checks, stmts = [], []
 
+            if isinstance(pattern, (tuple, list)):
+                checks.append(
+                    ast.Compare(
+                        left=ast.Call(func=ast.Name(id="len"), args=[
+                            compile_get_value(value_ast)
+                        ], keywords=[]),
+                        ops=[ast.Eq()],
+                        comparators=[ast.Constant(value=len(pattern), kind=None)]
+                    )
+                )
+
+            else:
+                checks += [
+                    ast.Compare(
+                        left=ast.Constant(value=key, kind=None),
+                        ops=[ast.In()],
+                        comparators=[compile_get_value(value_ast)]
+                    )
+                    for key in pattern.keys()
+                ]
+
             for key, subpattern in iter:
+
                 check, stmt = self.compile_destructuring(
                     ast.Subscript(
                         value=value_ast,
