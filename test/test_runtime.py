@@ -1,5 +1,5 @@
-import pytest
 import chr.runtime as rt
+
 
 def test_add_constraint():
     store = rt.CHRStore()
@@ -12,9 +12,10 @@ def test_add_constraint():
     store.insert('b', b)
     store.insert('c', c)
 
-    for i,x in [(a,'a') ,(b, 'b') ,(c, 'c')]:
+    for i, x in [(a, 'a'), (b, 'b'), (c, 'c')]:
         assert store.alive(i)
-        assert (i,x) in store.get_iterator()
+        assert (i, x) in store.get_iterator()
+
 
 def test_delete_constraint():
     store = rt.CHRStore()
@@ -54,7 +55,7 @@ def test_unification():
         (a, 2),
         (b, c),
         (c, 1),
-        (1,1),
+        (1, 1),
         ([a, 1], [2, b]),
         ((a, 1), (2, b)),
         ({1: a, 2: 1}, {1: 2, 2: b})
@@ -114,9 +115,9 @@ def test_logic_variable():
     assert rt.unify(x, y)
     assert y.get_value() == 1
     z = store.fresh('z')
-    assert rt.unify(z, (x,y))
-    assert z.get_value() == (1,1)
-    assert rt.unify(z, (1,1))
+    assert rt.unify(z, (x, y))
+    assert z.get_value() == (1, 1)
+    assert rt.unify(z, (1, 1))
 
 
 def test_occurs_check():

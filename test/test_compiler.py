@@ -1,7 +1,8 @@
-from chr.compiler import chr_compile
-from chr.runtime import CHRFalse, unify
-
 import pytest
+
+from chr.compiler import chr_compile
+from chr.runtime import CHRFalse
+
 
 def test_sum_solver():
     with open("test_files/sum_solver.chr", "r") as f:
@@ -33,12 +34,12 @@ def test_triple_solver():
     from generated.triple import TripleSolver
 
     solver = TripleSolver()
-    solver.triple((1,2,3))
+    solver.triple((1, 2, 3))
 
     assert len(solver.chr.dump()) == 4
 
     solver = TripleSolver()
-    solver.triple({1:"A", 2:"B", "scheiss":"C"})
+    solver.triple({1: "A", 2: "B", "scheiss": "C"})
 
     assert len(solver.chr.dump()) == 3
 
@@ -71,6 +72,7 @@ def test_eq_solver():
     assert b == 1
     assert c == 1
 
+
 def test_guard_tell():
     with open("test_files/guard_tell.chr", "r") as f:
         chr_compile("GuardTell", f.read(), target_file="generated/guard_tell.py")
@@ -85,6 +87,7 @@ def test_guard_tell():
 
     assert not a.is_bound()
 
+
 def test_error_message():
     with open("test_files/error_message.chr", "r") as f:
         chr_compile("ErrorSolver", f.read(), target_file="generated/error_message.py")
@@ -97,6 +100,7 @@ def test_error_message():
 
     with pytest.raises(CHRFalse, match=message):
         solver.error(message)
+
 
 def test_leq_solver():
     with open("test_files/leq_solver.chr", "r") as f:
@@ -111,7 +115,6 @@ def test_leq_solver():
     x = solver.fresh_var("X")
     y = solver.fresh_var("Y")
     z = solver.fresh_var("Z")
-
 
     # x <= y, z <= y, x <= z
     solver.leq(x, y)
@@ -140,7 +143,7 @@ def test_fibonacci():
             return r0
         if n == 1:
             return r1
-        return fib(n-1, r1 + r0, r1)
+        return fib(n - 1, r1 + r0, r1)
 
     solver = Fibonacci()
 
@@ -165,6 +168,7 @@ def test_match():
 
     assert x != y
     assert len(solver.dump_chr_store()) == 2
+
 
 def test_gcd():
     with open("test_files/gcd_solver.chr", "r") as f:
@@ -212,10 +216,6 @@ def test_length():
     assert len(solver.dump_chr_store()) == 0
     assert l2 == "Nil"
 
-    ## Will fail, because the recursion will in fact only happen,
-    ## *after* the variable is required.
-    ## Consider calling activate procedure directly after adding
-    ## a constraint.
     l3 = solver.fresh_var()
     solver.length((1, (2, "Nil")), l3)
     assert len(solver.dump_chr_store()) == 0

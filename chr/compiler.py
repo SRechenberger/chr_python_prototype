@@ -1,14 +1,15 @@
 import ast
-import chr.ast as chrast
-from chr.parser import chr_parse
 from functools import partial
+
 from ast_decompiler import decompile
 
-from pprintast import pprintast as ppast
+import chr.ast as chrast
+from chr.parser import chr_parse
+
 
 def comparison(op, args):
     return ast.Compare(
-        left = args[0],
+        left=args[0],
         ops=[op],
         comparators=[args[1]]
     )
@@ -16,6 +17,7 @@ def comparison(op, args):
 
 def compile_self_arg():
     return ast.arg(arg="self", annotation=None)
+
 
 def compile_all_different(ids):
     return ast.Call(
@@ -38,13 +40,17 @@ def compile_chr_call(func_id, args):
         keywords=[]
     )
 
+
 def compile_alive(id):
     return compile_chr_call(
         "alive",
         [ast.Name(id=id, context=ast.Load())]
     )
 
-def compile_builtin_call(func_id, args, kwargs=[]):
+
+def compile_builtin_call(func_id, args, kwargs=None):
+    if kwargs is None:
+        kwargs = []
     return ast.Call(
         func=ast.Attribute(
             value=ast.Attribute(
@@ -57,12 +63,14 @@ def compile_builtin_call(func_id, args, kwargs=[]):
         keywords=kwargs
     )
 
+
 def compile_in_history(rule_id, ids):
     return compile_chr_call(
         "in_history",
         [ast.Constant(value=rule_id, kind=None)] + \
         [ast.Name(id=id, context=ast.Load()) for id in ids]
     )
+
 
 def compile_add_to_history(rule_id, ids):
     return compile_chr_call(
@@ -71,11 +79,13 @@ def compile_add_to_history(rule_id, ids):
         [ast.Name(id=id, context=ast.Load()) for id in ids]
     )
 
+
 def compile_delete(id):
     return compile_chr_call(
         "delete",
         [ast.Name(id=id, context=ast.Load())]
     )
+
 
 def compile_get_value(var_ast):
     return ast.Call(
@@ -85,6 +95,7 @@ def compile_get_value(var_ast):
         args=[var_ast],
         keywords=[]
     )
+
 
 def compile_is_bound(varname):
     return ast.Call(
@@ -97,18 +108,19 @@ def compile_is_bound(varname):
     )
 
 
-def compile_activate(id, args, symbol):
+def compile_activate(index, args, symbol):
     return ast.Expr(ast.Call(
         func=ast.Attribute(
             value=ast.Name(id="self", ctx=ast.Load()),
             attr=f"__activate_{symbol}"
         ),
         args=[
-            ast.Name(id=id, context=ast.Load()),
+            ast.Name(id=index, context=ast.Load()),
             *(ast.Name(id=arg, context=ast.Load()) for arg in args)
         ],
         keywords=[]
     ))
+
 
 ASK_OPS = {
     ("eq", 2): partial(comparison, ast.Eq()),
@@ -146,9 +158,236 @@ TERM_OPS = {
     '%': ast.Mod()
 }
 
+
+def compile_activate_proc(symbol, arity, occurrences):
+    pname = f"__activate_{symbol}_{arity}"
+    params = ['id', *(f'_{i}' for i in range(0, arity))]
+    procnames = [
+        f'__{symbol}_{arity}_{i}'
+        for i in range(0, occurrences)
+    ]
+
+    calls = [
+        ast.If(
+            test=ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id="self"),
+                    attr=procname
+                ),
+                args=[
+                    ast.Name(id=param, ctx=ast.Load())
+                    for param in params
+                ],
+                keywords=[]
+            ),
+            body=[ast.Return(value=ast.Constant(value=True, kind=None))],
+            orelse=[]
+        )
+        for procname in procnames
+    ]
+
+    delay = ast.Pass()
+
+    if len(params) > 1:
+        bound_checks = []
+        for param in params[1:]:
+            bound_checks.append(
+                ast.BoolOp(op=ast.And(), values=[
+                    ast.Call(
+                        func=ast.Name(id="isinstance"),
+                        args=[
+                            ast.Name(id=param),
+                            ast.Name(id="LogicVariable")
+                        ],
+                        keywords=[]
+                    ),
+                    ast.UnaryOp(
+                        op=ast.Not(),
+                        operand=ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Name(id=param, ctx=ast.Load()),
+                                attr="is_bound"
+                            ),
+                            args=[],
+                            keywords=[]
+                        )
+                    )
+                ])
+            )
+
+        delay = ast.If(
+            test=ast.BoolOp(
+                op=ast.And(),
+                values=[
+                    ast.UnaryOp(op=ast.Not(), operand=ast.Name(id="delayed")),
+                    ast.BoolOp(op=ast.Or(),
+                               values=bound_checks
+                               )
+                ]
+            ),
+            body=[ast.Expr(
+                value=compile_builtin_call("delay", args=[
+                    ast.Lambda(
+                        args=ast.arguments(args=[], defaults=[], vararg=None, kwarg=None),
+                        body=ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Name(id="self", ctx=ast.Load()),
+                                attr=pname
+                            ),
+                            args=[
+                                ast.Name(id=param, ctx=ast.Load())
+                                for param in params
+                            ],
+                            keywords=[
+                                ast.keyword(
+                                    arg="delayed",
+                                    value=ast.Constant(value=True, kind=None)
+                                )
+                            ]
+                        )
+                    ),
+                    *(ast.Name(id=param, ctx=ast.Load()) for param in params[1:])
+                ])
+            )],
+            orelse=[]
+        )
+
+    return ast.FunctionDef(
+        name=pname,
+        args=ast.arguments(
+            args=[
+                ast.arg(arg="self", annotation=None),
+                *(ast.arg(arg=param, annotation=None) for param in params),
+                ast.arg(arg="delayed", annotation=None)
+            ],
+            defaults=[ast.Constant(value=False, kind=None)],
+            vararg=None,
+            kwarg=None
+        ),
+        body=[
+            *calls,
+            delay,
+            ast.Return(value=ast.Constant(value=False, kind=None))
+        ],
+        decorator_list=[]
+    )
+
+
+def compile_constraint_function(symbol, valid_arities):
+    checks = [
+        ast.If(
+            test=ast.Compare(
+                left=ast.Call(
+                    func=ast.Name(id="len"),
+                    args=[ast.Name(id="args")],
+                    keywords=[]
+                ),
+                ops=[ast.Eq()],
+                comparators=[ast.Constant(value=valid_arity, kind=None)]
+            ),
+            body=[
+                ast.Assign(
+                    targets=[ast.Name(id="vars")],
+                    value=ast.ListComp(
+                        elt=ast.IfExp(
+                            test=ast.Call(
+                                func=ast.Name(id="isinstance"),
+                                args=[
+                                    ast.Name(id="arg"),
+                                    ast.Name(id="LogicVariable")
+                                ],
+                                keywords=[]
+                            ),
+                            body=ast.Name(id="arg"),
+                            orelse=compile_builtin_call("fresh",
+                                                        [],
+                                                        kwargs=[
+                                                            ast.keyword(arg="value", value=ast.Name("arg"))
+                                                        ]
+                                                        )
+                        ),
+                        generators=[ast.comprehension(
+                            target=ast.Name(id="arg"),
+                            iter=ast.Name(id="args"),
+                            ifs=[],
+                            is_async=0
+                        )]
+                    )
+                ),
+                ast.Assign(
+                    targets=[ast.Name(id="new_constraint")],
+                    value=ast.Tuple(elts=[
+                        ast.Constant(value=f'{symbol}/{valid_arity}', kind=None),
+                        ast.Starred(value=ast.Name("vars"))
+                    ])
+                ),
+                ast.Assign(
+                    targets=[ast.Name(id="new_id")],
+                    value=compile_chr_call("new", [])
+                ),
+                ast.Expr(
+                    value=compile_chr_call("insert", [
+                        ast.Name("new_constraint"),
+                        ast.Name("new_id")
+                    ])
+                ),
+                ast.Expr(
+                    value=ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id="self"),
+                            attr=f'__activate_{symbol}_{valid_arity}'
+                        ),
+                        args=[
+                            ast.Name(id="new_id"),
+                            ast.Starred(value=ast.Name("vars"))
+                        ],
+                        keywords=[]
+                    )
+                ),
+                ast.Return(value=None)
+            ],
+            orelse=[]
+        )
+        for valid_arity in valid_arities
+    ]
+
+    finish = ast.Raise(
+        exc=ast.Call(
+            func=ast.Name("UndefinedConstraintError"),
+            args=[
+                ast.Constant(value=symbol, kind=None),
+                ast.Call(
+                    func=ast.Name(id="len"),
+                    args=[ast.Name(id="args")],
+                    keywords=[]
+                )
+            ],
+            keywords=[]
+        ),
+        cause=None
+    )
+
+    return ast.FunctionDef(
+        name=symbol,
+        args=ast.arguments(
+            args=[ast.arg(arg="self", annotation=None)],
+            vararg=ast.arg(arg="args", annotation=None),
+            kwarg=None,
+            defaults=[]
+        ),
+        body=[
+            *checks,
+            finish
+        ],
+        decorator_list=[]
+    )
+
+
 class Emitter:
 
-    def __init__(self, existentials=set()):
+    def __init__(self, existentials=None):
+        if existentials is None:
+            existentials = set()
         self.next_gen_var = 0
         self.known_vars = set()
         self.matchings = {}
@@ -156,16 +395,13 @@ class Emitter:
         self.chr_constraints = None
         self.existential_variables = existentials
 
-
     def add_var(self, var):
         self.known_vars.add(var)
-
 
     def gensym(self, prefix="E"):
         sym = f'_{prefix}_{self.next_gen_var}'
         self.next_gen_var += 1
         return sym
-
 
     def compile_program(self, solver_class_name, program):
         if not isinstance(program, chrast.Program):
@@ -175,16 +411,14 @@ class Emitter:
 
         processed = program
 
-
         occs = {
             (symbol, int(arity)): []
-            for symbol, arity in map(lambda x:x.split('/'), self.chr_constraints)
+            for symbol, arity in map(lambda x: x.split('/'), self.chr_constraints)
         }
         constraints = {
-            symbol: set([int(arity)])
-            for symbol, arity in map(lambda x:x.split('/'), self.chr_constraints)
+            symbol: {int(arity)}
+            for symbol, arity in map(lambda x: x.split('/'), self.chr_constraints)
         }
-
 
         for rule in processed.rules:
             defn = [
@@ -193,17 +427,17 @@ class Emitter:
             ]
             for proc, symb, ar in defn:
                 if (symb, ar) in occs:
-                    occs[symb,ar].append(proc)
+                    occs[symb, ar].append(proc)
                 else:
-                    occs[symb,ar] = [proc]
+                    occs[symb, ar] = [proc]
 
                 if symb in constraints:
                     constraints[symb].add(ar)
                 else:
-                    constraints[symb] = set([ar])
+                    constraints[symb] = {ar}
 
         activations = [
-            self.compile_activate_proc(symbol, arity, len(occurrences))
+            compile_activate_proc(symbol, arity, len(occurrences))
             for (symbol, arity), occurrences in occs.items()
         ]
 
@@ -213,7 +447,7 @@ class Emitter:
             occurrences += occ
 
         constraint_functions = [
-            self.compile_constraint_function(symbol, arities)
+            compile_constraint_function(symbol, arities)
             for symbol, arities in constraints.items()
         ]
 
@@ -221,7 +455,7 @@ class Emitter:
             ast.ImportFrom(
                 module="chr.runtime",
                 names=[
-                    ast.alias(name="UndefinedConstraintError",asname=None),
+                    ast.alias(name="UndefinedConstraintError", asname=None),
                     ast.alias(name="InconsistentBuiltinStoreError", asname=None),
                     ast.alias(name="all_different", asname=None),
                     ast.alias(name="LogicVariable", asname=None),
@@ -245,230 +479,6 @@ class Emitter:
             )
         ])
 
-
-    def compile_constraint_function(self, symbol, valid_arities):
-        checks = [
-            ast.If(
-                test=ast.Compare(
-                    left=ast.Call(
-                        func=ast.Name(id="len"),
-                        args=[ast.Name(id="args")],
-                        keywords=[]
-                    ),
-                    ops=[ast.Eq()],
-                    comparators=[ast.Constant(value=valid_arity, kind=None)]
-                ),
-                body=[
-                    ast.Assign(
-                        targets=[ast.Name(id="vars")],
-                        value=ast.ListComp(
-                            elt=ast.IfExp(
-                                test=ast.Call(
-                                    func=ast.Name(id="isinstance"),
-                                    args=[
-                                        ast.Name(id="arg"),
-                                        ast.Name(id="LogicVariable")
-                                    ],
-                                    keywords=[]
-                                ),
-                                body=ast.Name(id="arg"),
-                                orelse=compile_builtin_call("fresh",
-                                    [],
-                                    kwargs=[
-                                        ast.keyword(arg="value", value=ast.Name("arg"))
-                                    ]
-                                )
-                            ),
-                            generators=[ast.comprehension(
-                                target=ast.Name(id="arg"),
-                                iter=ast.Name(id="args"),
-                                ifs=[],
-                                is_async=0
-                            )]
-                        )
-                    ),
-                    ast.Assign(
-                        targets=[ast.Name(id="new_constraint")],
-                        value=ast.Tuple(elts=[
-                            ast.Constant(value=f'{symbol}/{valid_arity}', kind=None),
-                            ast.Starred(value=ast.Name("vars"))
-                        ])
-                    ),
-                    ast.Assign(
-                        targets=[ast.Name(id="new_id")],
-                        value=compile_chr_call("new", [])
-                    ),
-                    ast.Expr(
-                        value=compile_chr_call("insert", [
-                            ast.Name("new_constraint"),
-                            ast.Name("new_id")
-                        ])
-                    ),
-                    ast.Expr(
-                        value=ast.Call(
-                            func=ast.Attribute(
-                                value=ast.Name(id="self"),
-                                attr=f'__activate_{symbol}_{valid_arity}'
-                            ),
-                            args=[
-                                ast.Name(id="new_id"),
-                                ast.Starred(value=ast.Name("vars"))
-                            ],
-                            keywords=[]
-                        )
-                    ),
-                    ast.Return(value=None)
-                ],
-                orelse=[]
-            )
-            for valid_arity in valid_arities
-        ]
-
-        finish = ast.Raise(
-            exc=ast.Call(
-                func=ast.Name("UndefinedConstraintError"),
-                args=[
-                    ast.Constant(value=symbol, kind=None),
-                    ast.Call(
-                        func=ast.Name(id="len"),
-                        args=[ast.Name(id="args")],
-                        keywords=[]
-                    )
-                ],
-                keywords=[]
-            ),
-            cause=None
-        )
-
-        return ast.FunctionDef(
-            name=symbol,
-            args=ast.arguments(
-                args=[ast.arg(arg="self", annotation=None)],
-                vararg=ast.arg(arg="args", annotation=None),
-                kwarg=None,
-                defaults=[]
-            ),
-            body=[
-                *checks,
-                finish
-            ],
-            decorator_list=[]
-        )
-
-    def compile_activate_proc(self, symbol, arity, occurrences):
-        pname = f"__activate_{symbol}_{arity}"
-        params = [ 'id', *(f'_{i}' for i in range(0, arity)) ]
-        procnames = [
-            f'__{symbol}_{arity}_{i}'
-            for i in range(0, occurrences)
-        ]
-
-        calls = [
-            ast.If(
-                test=ast.Call(
-                    func=ast.Attribute(
-                        value=ast.Name(id="self"),
-                        attr=procname
-                    ),
-                    args=[
-                        ast.Name(id=param, ctx=ast.Load())
-                        for param in params
-                    ],
-                    keywords=[]
-                ),
-                body=[ast.Return(value=ast.Constant(value=True, kind=None))],
-                orelse=[]
-            )
-            for procname in procnames
-        ]
-
-        delay = ast.Pass()
-
-        if len(params) > 1:
-            bound_checks = []
-            for param in params[1:]:
-                bound_checks.append(
-                    ast.BoolOp(op=ast.And(), values=[
-                        ast.Call(
-                            func=ast.Name(id="isinstance"),
-                            args=[
-                                ast.Name(id=param),
-                                ast.Name(id="LogicVariable")
-                            ],
-                            keywords=[]
-                        ),
-                        ast.UnaryOp(
-                            op=ast.Not(),
-                            operand=ast.Call(
-                                func=ast.Attribute(
-                                    value=ast.Name(id=param, ctx=ast.Load()),
-                                    attr="is_bound"
-                                ),
-                                args=[],
-                                keywords=[]
-                            )
-                        )
-                    ])
-                )
-
-            delay = ast.If(
-                test=ast.BoolOp(
-                    op=ast.And(),
-                    values=[
-                        ast.UnaryOp(op=ast.Not(), operand=ast.Name(id="delayed")),
-                        ast.BoolOp(op=ast.Or(),
-                            values=bound_checks
-                        )
-                    ]
-                ),
-                body=[ast.Expr(
-                    value=compile_builtin_call("delay", args=[
-                        ast.Lambda(
-                            args=ast.arguments(args=[], defaults=[], vararg=None, kwarg=None),
-                            body=ast.Call(
-                                func=ast.Attribute(
-                                    value=ast.Name(id="self", ctx=ast.Load()),
-                                    attr=pname
-                                ),
-                                args=[
-                                    ast.Name(id=param, ctx=ast.Load())
-                                    for param in params
-                                ],
-                                keywords=[
-                                    ast.keyword(
-                                        arg="delayed",
-                                        value=ast.Constant(value=True, kind=None)
-                                    )
-                                ]
-                            )
-                        ),
-                        *(ast.Name(id=param, ctx=ast.Load()) for param in params[1:])
-                    ])
-                )],
-                orelse=[]
-            )
-
-        return ast.FunctionDef(
-            name=pname,
-            args=ast.arguments(
-                args=[
-                    ast.arg(arg="self", annotation=None),
-                    *(ast.arg(arg=param, annotation=None) for param in params),
-                    ast.arg(arg="delayed", annotation=None)
-                ],
-                defaults=[ast.Constant(value=False, kind=None)],
-                vararg=None,
-                kwarg=None
-            ),
-            body=[
-                *calls,
-                delay,
-                ast.Return(value=ast.Constant(value=False, kind=None))
-            ],
-            decorator_list=[]
-        )
-
-
     def check_for_ask_constraint(self, param, known_vars, get_value=False):
         if isinstance(param, chrast.Var):
             if get_value:
@@ -487,7 +497,7 @@ class Emitter:
         if isinstance(param, dict):
             ks, vs = zip(*(
                 (
-                    self.compile_term(key),
+                    self.compile_term(key, known_vars),
                     self.check_for_ask_constraint(val, known_vars, get_value=get_value)
                 )
                 for key, val in param.items()
@@ -495,7 +505,6 @@ class Emitter:
             return ast.Dict(keys=ks, values=vs)
 
         return ast.Constant(value=param, kind=None)
-
 
     def check_for_tell_constraint(self, param, known_vars, get_value=False):
         if isinstance(param, chrast.Var):
@@ -521,7 +530,7 @@ class Emitter:
         if isinstance(param, dict):
             ks, vs = zip(*(
                 (
-                    self.compile_term(key),
+                    self.compile_term(key, known_vars),
                     self.check_for_tell_constraint(val, known_vars, get_value=get_value)
                 )
                 for key, val in param.items()
@@ -529,7 +538,6 @@ class Emitter:
             return ast.Dict(keys=ks, values=vs)
 
         return ast.Constant(value=param, kind=None)
-
 
     def compile_term(self, term, known_vars):
         if isinstance(term, chrast.Term):
@@ -560,7 +568,6 @@ class Emitter:
                 known_vars[term.name] = ast.Name(id=term.name)
             return compile_get_value(known_vars[term.name])
 
-
         if isinstance(term, list):
             return ast.List(elts=[
                 self.compile_term(subterm, known_vars)
@@ -577,13 +584,11 @@ class Emitter:
             return ast.List(keys=[
                 *term.keys()
             ], values=[
-                self.compile_term(val)
-                for val in term.value()
+                self.compile_term(val, known_vars)
+                for val in term.values()
             ])
 
-
         return ast.Constant(value=term, kind=None)
-
 
     def compile_fresh(self, varname=None, value_ast=None):
         if not varname:
@@ -601,7 +606,6 @@ class Emitter:
         )
         return varname, stmt
 
-
     def compile_tell_constraint(self, symbol, params, known_vars):
         arity = len(params)
         if (symbol, arity) not in TELL_OPS:
@@ -614,7 +618,6 @@ class Emitter:
         ]
 
         return TELL_OPS[symbol, arity](prepared_params)
-
 
     def compile_ask_constraint(self, symbol, params, known_vars):
         arity = len(params)
@@ -629,14 +632,12 @@ class Emitter:
         result = ASK_OPS[symbol, arity](prepared_params)
         return result
 
-
     def compile_body_constraint(self, c, known_vars):
         symbol = c.symbol
         params = c.params
 
         inits = []
         vars = []
-
 
         for param in params:
             if isinstance(param, chrast.Var):
@@ -651,7 +652,6 @@ class Emitter:
                 inits += [init]
                 vars.append(var)
                 known_vars[var] = ast.Name(id=var)
-
 
         if symbol == "false":
             false_stmt = ast.Raise(
@@ -683,7 +683,7 @@ class Emitter:
             insert_stmt = ast.Expr(
                 value=compile_chr_call(
                     "insert",
-                    [ast.Name(id=new_constr),ast.Name(id=new_id)]
+                    [ast.Name(id=new_constr), ast.Name(id=new_id)]
                 )
             )
 
@@ -721,7 +721,6 @@ class Emitter:
 
         return [*inits, builtin_stmt], None, None
 
-
     def compile_guard_constraint(self, c, known_vars):
         cat, symbol = c.symbol.split('_')
 
@@ -729,7 +728,6 @@ class Emitter:
             return self.compile_ask_constraint(symbol, c.params, known_vars)
         elif cat == 'tell':
             return self.compile_tell_constraint(symbol, c.params, known_vars)
-
 
     def compile_body(self, total_heads, known_vars, removed_ids, occurrence_scheme):
 
@@ -742,7 +740,6 @@ class Emitter:
             ]),
             orelse=[]
         )
-
 
         guarded_body = ast.If(
             test=ast.BoolOp(op=ast.And(), values=[
@@ -788,8 +785,6 @@ class Emitter:
             ]
         )
 
-
-
         if occurrence_scheme.guard:
             guarded_body.body = [history_checked_body]
 
@@ -797,7 +792,6 @@ class Emitter:
             to_return.body = [history_checked_body]
 
         return to_return
-
 
     def compile_matching_loops(self, i, head_constraints, matchings, known_vars, removed_ids, occurrence_scheme):
         if not head_constraints:
@@ -821,13 +815,13 @@ class Emitter:
             dict(zip(arg_vars, [
                 ast.Subscript(
                     value=ast.Name(id=c_string),
-                    slice=ast.Index(value=ast.Constant(value=j+1, kind=None))
+                    slice=ast.Index(value=ast.Constant(value=j + 1, kind=None))
                 )
                 for j in range(0, arity)
             ]))
         )
 
-        checks = [compile_all_different(range(0, i+1))]
+        checks = [compile_all_different(range(0, i + 1))]
         destructs = []
         uncheckable_matchings = []
 
@@ -845,7 +839,7 @@ class Emitter:
                 uncheckable_matchings.append(matching)
 
         check_and_destr = self.compile_matching_loops(
-            i+1,
+            i + 1,
             head_constraints[1:],
             uncheckable_matchings,
             known_vars,
@@ -890,18 +884,17 @@ class Emitter:
 
         return matching_loop
 
-
     def compile_destructuring(self, value_ast, pattern, known_vars):
         if isinstance(pattern, chrast.Var):
             if pattern.name in known_vars:
                 if known_vars[pattern.name]:
                     return [
-                        ast.Compare(
-                            left=known_vars[pattern.name],
-                            ops=[ast.Eq()],
-                            comparators=[value_ast]
-                        )
-                    ], []
+                               ast.Compare(
+                                   left=known_vars[pattern.name],
+                                   ops=[ast.Eq()],
+                                   comparators=[value_ast]
+                               )
+                           ], []
                 else:
                     known_vars[pattern.name] = value_ast
                     return [], []
@@ -913,7 +906,6 @@ class Emitter:
                     value=value_ast
                 )
             ]
-
 
         val_bound = ast.Call(
             func=ast.Name(id="is_bound"),
@@ -949,7 +941,6 @@ class Emitter:
                 ]
 
             for key, subpattern in iter:
-
                 check, stmt = self.compile_destructuring(
                     ast.Subscript(
                         value=value_ast,
@@ -966,77 +957,31 @@ class Emitter:
                 stmts += stmt
 
             return [
-                val_bound,
-                ast.Call(
-                    func=ast.Name(id="isinstance"),
-                    args=[
-                        compile_get_value(value_ast),
-                        ast.Name(id=type(pattern).__name__),
-                    ],
-                    keywords=[]
-                ),
-                *checks
-            ], stmts
+                       val_bound,
+                       ast.Call(
+                           func=ast.Name(id="isinstance"),
+                           args=[
+                               compile_get_value(value_ast),
+                               ast.Name(id=type(pattern).__name__),
+                           ],
+                           keywords=[]
+                       ),
+                       *checks
+                   ], stmts
 
         return [
-            val_bound,
-            ast.Compare(
-                left=value_ast,
-                ops=[ast.Eq()],
-                comparators=[ast.Constant(value=pattern, kind=None)]
-            )
-        ], []
-
-
-    def compile_matching(self, i, others, occurrence_scheme):
-        if not others:
-            return self.compile_body(i, occurrence_scheme)
-
-        (j, c), *cs = others
-
-        self.indexes[j] = c.kept
-
-        for ix, var in enumerate(c.params):
-            self.add_var(var)
-            self.matchings[var] = (j, ix)
-
-        loop = ast.For(
-            target=ast.Tuple(elts=[
-                ast.Name(id=f'id_{j}'),
-                ast.Name(id=f'c_{j}')
-            ]),
-            iter=ast.Call(
-                func=ast.Attribute(
-                    value=ast.Attribute(
-                        value=ast.Name(id="self", ctx=ast.Load()),
-                        attr="chr"
-                    ),
-                    attr="get_iterator"
-                ),
-                args=[],
-                keywords=[
-                    ast.keyword(
-                        arg='symbol',
-                        value=ast.Constant(value=f'{c.symbol}/{c.arity}', kind=None)
-                    ),
-                    ast.keyword(
-                        arg='fix',
-                        value=ast.Constant(value=True, kind=None)
-                    )
-                ]
-            ),
-            body=[self.compile_matching(i, cs, occurrence_scheme)],
-            orelse=[]
-        )
-
-        return loop
-
+                   val_bound,
+                   ast.Compare(
+                       left=value_ast,
+                       ops=[ast.Eq()],
+                       comparators=[ast.Constant(value=pattern, kind=None)]
+                   )
+               ], []
 
     def compile_occurrence(self, occurrence_scheme):
         _, current = occurrence_scheme.occurring_constraint
         heads = occurrence_scheme.other_constraints
         matchings = occurrence_scheme.matching
-
 
         symbol = current.symbol
         arity = current.arity
@@ -1049,7 +994,6 @@ class Emitter:
         if not current.kept:
             removed_ids.add('id_0')
 
-
         known_vars = {
             **{var: ast.Name(id=var) for var in vars},
             **{var: None for var in occurrence_scheme.free_vars()}
@@ -1057,7 +1001,6 @@ class Emitter:
 
         checks, destructs = [], []
         uncheckable_matchings = []
-
 
         for matching in matchings:
             m = chrast.vars(matching)
@@ -1071,7 +1014,6 @@ class Emitter:
                 destructs += destruct
             else:
                 uncheckable_matchings.append(matching)
-
 
         check_and_destr = [
             *destructs,

@@ -1,7 +1,8 @@
-from chr.ast import *
-from parsy import string, regex, generate
-
 from functools import reduce
+
+from parsy import string, regex, generate, fail
+
+from chr.ast import *
 
 '''
 integer  ::= [0-9]+
@@ -37,7 +38,6 @@ lit_white = regex(r'[\n\t ]*')
 lit_signature = regex(r'[a-z][a-zA-Z0-9_-]*/[0-9]+')
 
 
-
 def token(s):
     if type(s) is not str:
         raise TypeError(f'{s}: {str} expected; got {type(s)}')
@@ -49,6 +49,7 @@ def token(s):
         return t
 
     return fun
+
 
 comma = token(',')
 
@@ -69,6 +70,7 @@ infix_term_ops = [
     ["and", "or"],
 ]
 
+
 def mk_infix_term_parser(term_parser, operators):
     @generate
     def fun():
@@ -86,7 +88,6 @@ def mk_infix_term_parser(term_parser, operators):
     return fun
 
 
-
 @generate
 def parse_infix_constraint():
     left = yield parse_term
@@ -102,7 +103,7 @@ def parse_functor(constraint=False):
         if constraint:
             symbol = yield lit_symbol
         else:
-            symbol = yield lit_operator.map(lambda s:s[1:-1]) | lit_symbol
+            symbol = yield lit_operator.map(lambda s: s[1:-1]) | lit_symbol
         br_open = yield string('(').optional()
         args = []
         if br_open:
@@ -117,6 +118,7 @@ def parse_functor(constraint=False):
             yield lit_white >> string(')')
 
         return (Constraint if constraint else Term)(symbol, args)
+
     return fun
 
 
@@ -125,20 +127,24 @@ def parse_variable():
     varname = yield lit_white >> string('$') >> lit_variable
     return Var(varname)
 
+
 @generate
 def parse_integer():
     number = yield lit_white >> lit_number
     return int(number)
 
+
 @generate
 def parse_string():
-    string = yield lit_white >> lit_string
-    return string[1:-1]
+    s = yield lit_white >> lit_string
+    return s[1:-1]
+
 
 @generate
 def parse_bool():
     s = yield lit_white >> (string('False') | string('True'))
     return s == "True"
+
 
 @generate
 def parse_list():
@@ -157,7 +163,8 @@ def parse_key_value():
         fail(f'{k} not ground')
     yield token(':')
     v = yield parse_term
-    return (k ,v)
+    return (k, v)
+
 
 @generate
 def parse_dict():
@@ -168,6 +175,7 @@ def parse_dict():
 
     return dict(items + ([last] if last else []))
 
+
 @generate
 def parse_tuple():
     yield token('(')
@@ -177,30 +185,33 @@ def parse_tuple():
 
     return tuple(es + ([last] if last else []))
 
+
 @generate
 def parse_atom():
     result = yield lit_white \
-        >> (
-            parse_functor() | \
-            parse_variable | \
-            parse_string | \
-            parse_integer | \
-            parse_list | \
-            parse_dict | \
-            parse_tuple | \
-            parse_bool
-        )
+                   >> (
+                           parse_functor() |
+                           parse_variable |
+                           parse_string |
+                           parse_integer |
+                           parse_list |
+                           parse_dict |
+                           parse_tuple |
+                           parse_bool
+                   )
     return result
+
 
 @generate
 def parse_term():
     result = yield lit_white \
-        >> (
-            token('(') >> parse_term << token(')') | \
-            parse_infix_term(infix_term_ops) | \
-            parse_atom
-        )
+                   >> (
+                           token('(') >> parse_term << token(')') |
+                           parse_infix_term(infix_term_ops) |
+                           parse_atom
+                   )
     return result
+
 
 def parse_infix_term(op_table, acc=parse_atom):
     if not op_table:
@@ -211,12 +222,14 @@ def parse_infix_term(op_table, acc=parse_atom):
         acc=mk_infix_term_parser(acc, op_table[0])
     )
 
+
 @generate
 def parse_constraint():
     result = yield lit_white >> \
-        parse_functor(constraint=True) | \
-        parse_infix_constraint
+                   parse_functor(constraint=True) | \
+                   parse_infix_constraint
     return result
+
 
 @generate
 def parse_constraints():
@@ -232,11 +245,13 @@ def parse_constraints():
 
     return args
 
+
 @generate
 def parse_guard():
     cs = yield lit_white >> parse_constraints
     yield lit_white >> string('|')
     return cs
+
 
 @generate
 def parse_body():
@@ -244,11 +259,13 @@ def parse_body():
     cs = yield lit_white >> parse_constraints
     return gs, cs
 
+
 @generate
 def parse_rule_name():
     name = yield lit_white >> lit_symbol
     yield lit_white >> string('@')
     return name
+
 
 def parse_rule(rule_name_generator):
     @generate
@@ -266,6 +283,7 @@ def parse_rule(rule_name_generator):
 
     return fun
 
+
 @generate
 def parse_simplification():
     hs = yield lit_white >> parse_constraints
@@ -273,12 +291,14 @@ def parse_simplification():
     gs, bs = yield lit_white >> parse_body
     return [], hs, gs, bs
 
+
 @generate
 def parse_propagation():
     hs = yield lit_white >> parse_constraints
     yield lit_white >> string('==>')
     gs, bs = yield lit_white >> parse_body
     return hs, [], gs, bs
+
 
 @generate
 def parse_simpagation():
@@ -288,6 +308,7 @@ def parse_simpagation():
     yield lit_white >> string('<=>')
     gs, bs = yield lit_white >> parse_body
     return ks, rs, gs, bs
+
 
 def parse_rules(rule_name_generator):
     @generate
@@ -309,6 +330,7 @@ def parse_signature():
     signature = yield lit_white >> lit_signature
     return signature
 
+
 @generate
 def parse_declaration():
     yield lit_white >> string("constraints")
@@ -327,10 +349,11 @@ def parse_declaration():
 
 def parse_program():
     next_rule_id = 0
+
     def rule_name_gen():
         nonlocal next_rule_id
         next_rule_id += 1
-        return f'rule_{next_rule_id-1}'
+        return f'rule_{next_rule_id - 1}'
 
     @generate
     def fun():
@@ -339,6 +362,7 @@ def parse_program():
         return Program(decls, rules)
 
     return fun
+
 
 def chr_parse(source):
     return parse_program().parse(source)

@@ -1,5 +1,5 @@
 from chr.ast import *
-import pytest
+
 
 def test_program_processing():
     program = Program(user_constraints=["gcd/1"], rules=[

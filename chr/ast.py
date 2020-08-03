@@ -1,5 +1,7 @@
 class Term:
-    def __init__(self, symbol, params=[]):
+    def __init__(self, symbol, params=None):
+        if params is None:
+            params = []
         self.symbol = symbol
         self.params = params
         self.arity = len(params)
@@ -13,7 +15,7 @@ class Term:
 
     def __eq__(self, other):
         return self.symbol == other.symbol \
-            and self.params == other.params
+               and self.params == other.params
 
     def __repr__(self):
         return str(self)
@@ -21,7 +23,7 @@ class Term:
     def vars(self):
         if self.arity > 0:
             vs, *vss = map(
-                lambda p: set([p]) if type(p) is str else p.vars(),
+                lambda p: {p} if type(p) is str else p.vars(),
                 self.params
             )
             return vs.union(*vss)
@@ -40,7 +42,7 @@ class Var:
 
     def __eq__(self, other):
         return type(self) == type(other) \
-            and self.name == other.name
+               and self.name == other.name
 
 
 def is_ground(term):
@@ -53,10 +55,9 @@ def is_ground(term):
     return True
 
 
-
 def vars(term):
     if isinstance(term, Var):
-        return set([term.name])
+        return {term.name}
     if isinstance(term, dict):
         return set().union(*(vars(v) for v in term.items()))
     if isinstance(term, (list, tuple)):
@@ -74,22 +75,21 @@ class Constraint(Term):
 
 class HeadConstraint(Constraint):
     def __init__(self, symbol, occurrence_idx, params, kept):
-        self.symbol = symbol
+        super().__init__(symbol, params)
         self.occurrence_idx = occurrence_idx
-        self.params = params
         self.kept = kept
         self.arity = len(params)
 
     def __str__(self):
         return ('+' if self.kept else '-') \
-            + f'{self.symbol}_{self.occurrence_idx}' \
-            + (f'({", ".join(map(str, self.params))})' if self.arity > 0 else "")
+               + f'{self.symbol}_{self.occurrence_idx}' \
+               + (f'({", ".join(map(str, self.params))})' if self.arity > 0 else "")
 
     def __eq__(self, other):
         return self.symbol == other.symbol \
-            and self.occurrence_idx == other.occurrence_idx \
-            and self.params == other.params \
-            and self.kept == other.kept
+               and self.occurrence_idx == other.occurrence_idx \
+               and self.params == other.params \
+               and self.kept == other.kept
 
     def __repr__(self):
         return str(self)
@@ -105,10 +105,10 @@ class Rule:
 
     def __eq__(self, other):
         return self.name == other.name \
-            and self.kept_head == other.kept_head \
-            and self.removed_head == other.removed_head \
-            and self.guard == other.guard \
-            and self.body == other.body
+               and self.kept_head == other.kept_head \
+               and self.removed_head == other.removed_head \
+               and self.guard == other.guard \
+               and self.body == other.body
 
     def __str__(self):
         ks = ', '.join(map(str, self.kept_head)) if self.kept_head else None
@@ -145,11 +145,11 @@ class Rule:
 
         def mk_new_var():
             nonlocal next_var_id
-            new_var = None
-            while not new_var or new_var in known_vars:
-                new_var = f'_{next_var_id}'
+            new_variable = None
+            while not new_variable or new_variable in known_vars:
+                new_variable = f'_{next_var_id}'
                 next_var_id += 1
-            return new_var
+            return new_variable
 
         for head, normal_head in [(self.kept_head, normal_kept), (self.removed_head, normal_removed)]:
             for k in head:
@@ -166,8 +166,6 @@ class Rule:
                         else:
                             known_vars.add(p.name)
                             normal_params.append(p.name)
-
-
                     else:
                         new_var = mk_new_var()
                         matching.append(Constraint("ask_match", params=[
@@ -186,14 +184,12 @@ class Rule:
             [c for c in self.body if c.symbol != "true"]
         )
 
+
 class NormalizedRule(Rule):
-    def __init__(self, name, kept, removed, matching, guard, body):
-        self.name = name
-        self.kept_head = kept
-        self.removed_head = removed
+    def __init__(self, name, kept_head, removed_head, matching, guard, body):
+        super().__init__(name, kept_head, removed_head, guard, body)
         self.matching = matching
-        self.guard = guard
-        self.body = body
+
 
 class OccurrenceScheme:
     def __init__(self, rule_name, occurring_constraint, other_constraints, matching, guard, body):
@@ -206,9 +202,9 @@ class OccurrenceScheme:
 
     def __eq__(self, other):
         return self.occurring_constraint == other.occurring_constraint \
-            and self.other_constraints == other.other_constraints \
-            and self.guard == other.guard \
-            and self.body == other.body
+               and self.other_constraints == other.other_constraints \
+               and self.guard == other.guard \
+               and self.body == other.body
 
     def __str__(self):
         occ = f'*{self.occurring_constraint}*'
@@ -231,8 +227,7 @@ class OccurrenceScheme:
         oc_vars = vars(self.occurring_constraint[1])
         head_vars = oc_vars.union(*(vars(c[1]) for c in self.other_constraints))
         return set().union(*(vars(c) for c in self.matching + self.guard + self.body)) \
-             - head_vars
-
+               - head_vars
 
 
 class ProcessedRule:
@@ -254,9 +249,9 @@ class ProcessedRule:
 
     def __eq__(self, other):
         return self.name == other.name \
-            and self.head == other.head \
-            and self.body == other.body \
-            and self.guard == other.guard
+               and self.head == other.head \
+               and self.body == other.body \
+               and self.guard == other.guard
 
     def __str__(self):
         rule = f"{self.name} @ "
@@ -282,7 +277,7 @@ class Program:
 
     def __eq__(self, other):
         return self.user_constraints == other.user_constraints \
-            and self.rules == other.rules
+               and self.rules == other.rules
 
     def __str__(self):
         return '\n'.join(map(str, self.rules))
@@ -337,6 +332,5 @@ class Program:
                 guard=rule.guard,
                 body=rule.body
             ))
-
 
         return Program(self.user_constraints, rules), symbols

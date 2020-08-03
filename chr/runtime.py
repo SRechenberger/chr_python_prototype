@@ -1,5 +1,3 @@
-from collections.abc import Hashable
-
 class UndefinedConstraintError(Exception):
     def __init__(self, symbol, arity):
         self.signature = f'{symbol}/{arity}'
@@ -14,9 +12,11 @@ class UndefinedConstraintError(Exception):
 class InconsistentBuiltinStoreError(Exception):
     pass
 
+
 class CHRFalse(Exception):
     def __init__(self, *messages):
         self.messages = messages
+
 
 def all_different(*vals):
     s = set()
@@ -26,6 +26,7 @@ def all_different(*vals):
         s.add(val)
 
     return True
+
 
 class CHRStore:
 
@@ -48,7 +49,6 @@ class CHRStore:
             self.history[rule_name].append(ids_set)
         else:
             self.history[rule_name] = [ids_set]
-
 
     def in_history(self, rule_name, *ids):
         ids_set = set(ids)
@@ -73,7 +73,6 @@ class CHRStore:
         self.recently_killed -= deleted_set
 
         return to_return
-
 
     def kill(self, id):
         if id in self.alive_set:
@@ -120,16 +119,15 @@ def unify(left, right):
         return True
 
     if (
-        isinstance(left, LogicVariable) and
-        isinstance(right, LogicVariable) and
-        (left.find_repr() is not left or right.find_repr() is not right)
+            isinstance(left, LogicVariable) and
+            isinstance(right, LogicVariable) and
+            (left.find_repr() is not left or right.find_repr() is not right)
     ):
         left_repr = left.find_repr()
         right_repr = right.find_repr()
         if left_repr.name < right_repr.name:
             return unify(left_repr, right_repr)
         return unify(right_repr, left_repr)
-
 
     if isinstance(left, LogicVariable):
         if left.is_bound():
@@ -158,6 +156,7 @@ def unify(left, right):
 
     return left == right
 
+
 def get_value(v):
     if isinstance(v, LogicVariable):
         if v.is_bound():
@@ -166,11 +165,13 @@ def get_value(v):
             raise Exception(f"variable {v} not bound")
     return v
 
+
 def is_bound(v):
     if isinstance(v, LogicVariable):
         return v.is_bound()
 
     return True
+
 
 class LogicVariable:
     def __init__(self, name, store, value=None):
@@ -184,11 +185,11 @@ class LogicVariable:
 
         if type(term) in [list, tuple]:
             return self in term \
-                or any(self.occurs_check(subterm) for subterm in term)
+                   or any(self.occurs_check(subterm) for subterm in term)
 
         if type(term) is dict:
             return self in term.values() \
-                or any(self.occurs_check(subterm) for subterm in term.values())
+                   or any(self.occurs_check(subterm) for subterm in term.values())
 
         return False
 
@@ -205,7 +206,7 @@ class LogicVariable:
         if self.is_bound():
             return False
 
-        if self.value == None:
+        if self.value is None:
             self.value = value
             self.store.trail.append(self)
             return True
@@ -215,13 +216,12 @@ class LogicVariable:
 
         return False
 
-
     def get_value(self):
 
         if isinstance(self.value, LogicVariable):
             return self.value.get_value()
 
-        if self.value == None:
+        if self.value is None:
             return None
 
         if type(self.value) is list:
@@ -250,13 +250,12 @@ class LogicVariable:
 
         return self
 
-
     def is_bound(self):
 
         if isinstance(self.value, LogicVariable):
             return self.value.is_bound()
 
-        if self.value == None:
+        if self.value is None:
             return False
 
         return True
@@ -270,7 +269,6 @@ class LogicVariable:
     def __repr__(self):
         return str(self)
 
-
     def __eq__(self, other):
         if self is other:
             return True
@@ -283,6 +281,7 @@ class LogicVariable:
 
         return False
 
+
 class BuiltInStore:
 
     def __init__(self):
@@ -292,7 +291,6 @@ class BuiltInStore:
         self.next_delay_id = 0
         self.delays = {}
         self.successfully_called_delays = set()
-
 
     def fresh(self, name=None, value=None):
         if name and name.startswith("_"):
@@ -311,18 +309,15 @@ class BuiltInStore:
 
         return LogicVariable(var_name, self, value=value)
 
-
-    def delay(self, callable, *vars):
+    def delay(self, delayed_call, *variables):
         id = self.next_delay_id
-        for var in vars:
+        for var in variables:
             if var.name in self.delays:
-                self.delays[var.name].append((id, callable))
+                self.delays[var.name].append((id, delayed_call))
             else:
-                self.delays[var.name] = [(id, callable)]
-
+                self.delays[var.name] = [(id, delayed_call)]
 
         self.next_delay_id += 1
-
 
     def ask_eq(self, x, y):
         return x == y
@@ -330,26 +325,23 @@ class BuiltInStore:
     def tell_eq(self, x, y):
         return unify(x, y)
 
-    def is_consistent(self):
-        return self.consistent
-
     def commit(self):
         trail = self.trail
         self.trail = []
         for var in trail:
             if var.name in self.delays:
-                for id, f in self.delays[var.name]:
-                    if id not in self.successfully_called_delays:
+                for index, f in self.delays[var.name]:
+                    if index not in self.successfully_called_delays:
                         if f():
-                            self.successfully_called_delays.add(id)
+                            self.successfully_called_delays.add(index)
 
         # Cleanup
-        for id in self.successfully_called_delays:
+        for index in self.successfully_called_delays:
             for v, ds in self.delays.items():
                 self.delays[v] = [
                     (id1, f)
                     for (id1, f) in ds
-                    if id1 != id
+                    if id1 != index
                 ]
 
     def backtrack(self):
