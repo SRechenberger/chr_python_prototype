@@ -4,4 +4,4 @@ constraints leq/2.
 reflexivity  @ leq($_0, $_0) <=> true.
 idempotence  @ leq($_0, $_1) \ leq($_0, $_1) <=> true.
 transitivity @ leq($_0, $_1), leq($_1, $_2) ==> leq($_0, $_2).
-antisymmetry @ leq($_0, $_1), leq($_1, $_0) <=> $_0 =! $_1.
+antisymmetry @ leq($_0, $_1), leq($_1, $_0) <=> $_0 = $_1.

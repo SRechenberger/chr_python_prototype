@@ -1,7 +1,7 @@
 constraints length/2.
 
-length("Nil", $L) <=> $L =! 0.
-length($Xs, 0) <=> $Xs =! "Nil".
-length(($X, $Xs), $L) <=> length($Xs, $L1), $L =! $L1 + 1.
-length($Xs, $L) <=> ask_bound($L), 1 <=? $L | $Xs =! ($Y, $Ys), length($Ys, $L-1).
-length($Xs, $L) ==> 0 <=? $L.
+length("Nil", $L) <=> $L = 0.
+length($Xs, 0) <=> $Xs = "Nil".
+length(($X, $Xs), $L) <=> length($Xs, $L1), $L = $L1 + 1.
+length($Xs, $L) <=> ask_bound($L), 1 <= $L | $Xs = ($Y, $Ys), length($Ys, $L-1).
+length($Xs, $L) ==> 0 <= $L.

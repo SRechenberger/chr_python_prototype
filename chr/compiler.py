@@ -465,11 +465,7 @@ def check_for_ask_constraint(param, known_vars, get_value=False):
 
 def check_for_tell_constraint(param, known_vars, get_value=False):
     if isinstance(param, chrast.Var):
-        if param.name not in known_vars:
-            var_ast = ast.Name(id=param.name, ctx=ast.Load())
-            known_vars[param.name] = var_ast
-        else:
-            var_ast = known_vars[param.name]
+        var_ast = known_vars[param.name]
         if get_value:
             return compile_get_value(known_vars[param.name])
         return var_ast
@@ -748,6 +744,12 @@ class Emitter:
         inits = []
         variables = []
 
+        free_variables = chrast.vars(c) - set(known_vars.keys())
+
+        for free_var in free_variables:
+            inits.append(self.compile_fresh(free_var))
+            known_vars[free_var] = ast.Name(id=free_var)
+
         for param in params:
             if isinstance(param, chrast.Var):
                 variables.append(param.name)
@@ -999,8 +1001,7 @@ class Emitter:
             removed_ids.add(current_index)
 
         known_vars = {
-            **{var: ast.Name(id=var) for var in variables},
-            **{var: None for var in occurrence_scheme.free_vars()}
+            var: ast.Name(id=var) for var in variables
         }
 
         checks, destructs = [], []

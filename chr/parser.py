@@ -53,21 +53,12 @@ def token(s):
 
 comma = token(',')
 
-infix_constraints = {
-    "=!": "tell_eq",
-    "=?": "ask_eq",
-    "<=?": "ask_leq",
-    "<?": "ask_lt",
-    ">=?": "ask_geq",
-    ">?": "ask_gt",
-    "!=?": "ask_neq"
-}
-
 infix_term_ops = [
     ["*", "/", "%"],
     ["+", "-"],
     ["==", "!=", "<=", "<", ">=", ">"],
     ["and", "or"],
+    ["="]
 ]
 
 
@@ -89,37 +80,22 @@ def mk_infix_term_parser(term_parser, operators):
 
 
 @generate
-def parse_infix_constraint():
-    left = yield parse_term
-    op = yield reduce(lambda l, r: l | r, map(token, infix_constraints.keys()))
-    right = yield parse_term
-
-    return Term(infix_constraints[op], [left, right])
-
-
-def parse_functor(constraint=False):
-    @generate
-    def fun():
-        if constraint:
-            symbol = yield lit_symbol
-        else:
-            symbol = yield lit_operator.map(lambda s: s[1:-1]) | lit_symbol
-        br_open = yield string('(').optional()
-        args = []
-        if br_open:
+def parse_prefix_term():
+    symbol = yield lit_symbol | (token("'") >> regex("[^\n\t ']+") << token("'"))
+    br_open = yield string('(').optional()
+    args = []
+    if br_open:
+        t = yield lit_white >> parse_term
+        args.append(t)
+        while True:
+            c = yield lit_white >> string(',').optional()
+            if not c:
+                break
             t = yield lit_white >> parse_term
             args.append(t)
-            while True:
-                c = yield lit_white >> string(',').optional()
-                if not c:
-                    break
-                t = yield lit_white >> parse_term
-                args.append(t)
-            yield lit_white >> string(')')
+        yield lit_white >> string(')')
 
-        return (Constraint if constraint else Term)(symbol, args)
-
-    return fun
+    return Term(symbol, args)
 
 
 @generate
@@ -163,7 +139,7 @@ def parse_key_value():
         fail(f'{k} not ground')
     yield token(':')
     v = yield parse_term
-    return (k, v)
+    return k, v
 
 
 @generate
@@ -190,7 +166,6 @@ def parse_tuple():
 def parse_atom():
     result = yield lit_white \
                    >> (
-                           parse_functor() |
                            parse_variable |
                            parse_string |
                            parse_integer |
@@ -202,12 +177,14 @@ def parse_atom():
     return result
 
 
+
 @generate
 def parse_term():
     result = yield lit_white \
                    >> (
                            token('(') >> parse_term << token(')') |
                            parse_infix_term(infix_term_ops) |
+                           parse_prefix_term |
                            parse_atom
                    )
     return result
@@ -224,23 +201,15 @@ def parse_infix_term(op_table, acc=parse_atom):
 
 
 @generate
-def parse_constraint():
-    result = yield lit_white >> \
-                   parse_functor(constraint=True) | \
-                   parse_infix_constraint
-    return result
-
-
-@generate
 def parse_constraints():
-    c = yield lit_white >> parse_constraint
+    c = yield lit_white >> parse_term
     args = [c]
     while True:
         comma = yield lit_white >> string(',').optional()
         if not comma:
             break
 
-        c1 = yield lit_white >> parse_constraint
+        c1 = yield lit_white >> parse_term
         args.append(c1)
 
     return args

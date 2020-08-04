@@ -1,7 +1,7 @@
 constraints gcd/1.
 
-error @ gcd($_0) <=> ask_bound($_0), $_0 <? 0 | false("Number < Zero").
-r1 @ gcd($_0) <=> $_0 =? 0 | true.
+error @ gcd($_0) <=> ask_bound($_0), $_0 < 0 | false("Number < Zero").
+r1 @ gcd($_0) <=> $_0 = 0 | true.
 r2 @ gcd($_0) \ gcd($_1) <=>
-        ask_bound($_0), ask_bound($_1), $_0 <=? $_1 |
-    $_2 =! $_1 - $_0, gcd($_2).
+        ask_bound($_0), ask_bound($_1), $_0 <= $_1 |
+    $_2 = $_1 - $_0, gcd($_2).

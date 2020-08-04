@@ -69,11 +69,7 @@ def vars(term):
     return set()
 
 
-class Constraint(Term):
-    pass
-
-
-class HeadConstraint(Constraint):
+class HeadConstraint(Term):
     def __init__(self, symbol, occurrence_idx, params, kept):
         super().__init__(symbol, params)
         self.occurrence_idx = occurrence_idx
@@ -159,7 +155,7 @@ class Rule:
                         if p.name in known_vars:
                             new_var = mk_new_var()
                             known_vars.add(new_var)
-                            matching.append(Constraint("ask_match", params=[
+                            matching.append(Term("ask_match", params=[
                                 Var(new_var), p
                             ]))
                             normal_params.append(new_var)
@@ -168,12 +164,12 @@ class Rule:
                             normal_params.append(p.name)
                     else:
                         new_var = mk_new_var()
-                        matching.append(Constraint("ask_match", params=[
+                        matching.append(Term("ask_match", params=[
                             Var(new_var), p
                         ]))
                         normal_params.append(new_var)
 
-                normal_head.append(Constraint(k.symbol, normal_params))
+                normal_head.append(Term(k.symbol, normal_params))
 
         return NormalizedRule(
             self.name,

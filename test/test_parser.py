@@ -42,28 +42,28 @@ def test_term():
 
 def test_constraint():
     test_cases = [
-        ("gcd($N)", Constraint("gcd", params=[Var("N")])),
-        ("gcd(0)", Constraint("gcd", params=[0])),
-        ("gcd(minus($M,$N))", Constraint(
+        ("gcd($N)", Term("gcd", params=[Var("N")])),
+        ("gcd(0)", Term("gcd", params=[0])),
+        ("gcd(minus($M,$N))", Term(
             "gcd",
             params=[Term("minus", params=[Var("M"), Var("N")])]
         )),
-        ("triple(($X,$Y,$Z))", Constraint("triple", params=[
+        ("triple(($X,$Y,$Z))", Term("triple", params=[
             (Var("X"), Var("Y"), Var("Z"))
         ])),
-        ("$X =! 1", Constraint("tell_eq", params=[Var("X"), 1])),
-        ("0 =? 1", Constraint("ask_eq", params=[0, 1])),
-        ("0 <=? 1", Constraint("ask_leq", params=[0, 1]))
+        ("$X = 1", Term("=", params=[Var("X"), 1])),
+        ("0 == 1", Term("==", params=[0, 1])),
+        ("0 <= 1", Term("<=", params=[0, 1]))
     ]
 
     for input, expected_output in test_cases:
-        assert parse_constraint.parse(input) == expected_output
+        assert parse_term.parse(input) == expected_output
 
 
 def test_constraints():
     test_cases = [
-        ("c1", [Constraint("c1")]),
-        ("c1, c2, c3", [Constraint(f'c{i}') for i in range(1, 4)])
+        ("c1", [Term("c1")]),
+        ("c1, c2, c3", [Term(f'c{i}') for i in range(1, 4)])
     ]
     for input, expected_output in test_cases:
         print("input", input, "expected", expected_output)
@@ -74,7 +74,7 @@ def test_constraints():
 
 def test_simpagation():
     test_cases = [
-        ("k \\ r <=> b", ([Constraint("k")], [Constraint("r")], None, [Constraint("b")]))
+        ("k \\ r <=> b", ([Term("k")], [Term("r")], None, [Term("b")]))
     ]
     for input_string, expected_output in test_cases:
         assert parse_simpagation.parse(input_string) == expected_output
@@ -83,13 +83,13 @@ def test_simpagation():
 def test_guard_body():
     test_cases = [
         ("g1, g2, g3 | c1", ([
-                                 Constraint("g1"),
-                                 Constraint("g2"),
-                                 Constraint("g3")
+                                 Term("g1"),
+                                 Term("g2"),
+                                 Term("g3")
                              ], [
-                                 Constraint("c1")
+                                 Term("c1")
                              ])),
-        ("b1, b2", (None, [Constraint("b1"), Constraint("b2")]))
+        ("b1, b2", (None, [Term("b1"), Term("b2")]))
     ]
 
     for input_string, expected_output in test_cases:
@@ -99,11 +99,11 @@ def test_guard_body():
 
 program_code = '''constraints gcd/1.
 
-error @ gcd($_0) <=> ask_bound($_0), ask_lt($_0, 0) | false("Number < Zero").
+error @ gcd($_0) <=> ask_bound($_0), $_0 < 0 | false("Number < Zero").
 r1 @ gcd(0) <=> true.
 r2 @ gcd($_0) \\ gcd($_1) <=>
-        ask_bound($_0), ask_bound($_1), $_0 <=? $_1 |
-    $_2 =! $_1 - $_0, gcd($_2).
+        ask_bound($_0), ask_bound($_1), $_0 <= $_1 |
+    $_2 = $_1 - $_0, gcd($_2).
 '''
 
 program = Program(user_constraints=["gcd/1"], rules=[
@@ -111,36 +111,36 @@ program = Program(user_constraints=["gcd/1"], rules=[
     Rule(
         name="error",
         kept_head=[],
-        removed_head=[Constraint("gcd", params=[Var("_0")])],
+        removed_head=[Term("gcd", params=[Var("_0")])],
         guard=[
-            Constraint("ask_bound", params=[Var("_0")]),
-            Constraint("ask_lt", params=[Var("_0"), 0])
+            Term("ask_bound", params=[Var("_0")]),
+            Term("<", params=[Var("_0"), 0])
         ],
         body=[
-            Constraint("false", params=["Number < Zero"])
+            Term("false", params=["Number < Zero"])
         ]
     ),
     # r1 @ gcd(_0) <=> _0 == 0 | true.
     Rule(
         name="r1",
         kept_head=[],
-        removed_head=[Constraint("gcd", params=[0])],
+        removed_head=[Term("gcd", params=[0])],
         guard=[],
-        body=[Constraint("true")]
+        body=[Term("true")]
     ),
     # r2 @ gcd(_0) \ gcd(_1) <=> _0 <= _1 | _2 = _1 - _0, gcd(_2).
     Rule(
         name="r2",
-        kept_head=[Constraint("gcd", params=[Var("_0")])],
-        removed_head=[Constraint("gcd", params=[Var("_1")])],
+        kept_head=[Term("gcd", params=[Var("_0")])],
+        removed_head=[Term("gcd", params=[Var("_1")])],
         guard=[
-            Constraint("ask_bound", params=[Var("_0")]),
-            Constraint("ask_bound", params=[Var("_1")]),
-            Constraint("ask_leq", params=[Var("_0"), Var("_1")])
+            Term("ask_bound", params=[Var("_0")]),
+            Term("ask_bound", params=[Var("_1")]),
+            Term("<=", params=[Var("_0"), Var("_1")])
         ],
         body=[
-            Constraint("tell_eq", params=[Var("_2"), Term("-", [Var("_1"), Var("_0")])]),
-            Constraint("gcd", params=[Var("_2")])
+            Term("=", params=[Var("_2"), Term("-", [Var("_1"), Var("_0")])]),
+            Term("gcd", params=[Var("_2")])
         ]
     )
 ])
