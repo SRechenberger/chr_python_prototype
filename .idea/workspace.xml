@@ -20,14 +20,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/chr/ast.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/ast.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/chr/compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/compiler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/runtime.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/runtime.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_ast.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_ast.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_compiler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_runtime.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_runtime.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

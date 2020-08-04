@@ -383,6 +383,252 @@ def compile_constraint_function(symbol, valid_arities):
     )
 
 
+def compile_term(term, known_vars):
+    if isinstance(term, chrast.Term):
+        symbol = term.symbol
+        arity = len(term.params)
+        subterms = []
+
+        for subterm in term.params:
+            subterm_eval = compile_term(subterm, known_vars)
+            subterms += [subterm_eval]
+
+        if symbol == '-' and arity == 1:
+            return ast.UnaryOp(
+                ast.Invert(),
+                operand=subterms[0]
+            )
+        elif symbol in TERM_OPS and arity == 2:
+            return ast.BinOp(
+                left=subterms[0],
+                op=TERM_OPS[symbol],
+                right=subterms[1]
+            )
+        else:
+            raise Exception(f"unknown operator: {symbol}/{arity}")
+
+    if isinstance(term, chrast.Var):
+        if not known_vars[term.name]:
+            known_vars[term.name] = ast.Name(id=term.name)
+        return compile_get_value(known_vars[term.name])
+
+    if isinstance(term, list):
+        return ast.List(elts=[
+            compile_term(subterm, known_vars)
+            for subterm in term
+        ])
+
+    if isinstance(term, tuple):
+        return ast.Tuple(elts=[
+            compile_term(subterm, known_vars)
+            for subterm in term
+        ])
+
+    if isinstance(term, dict):
+        return ast.List(keys=[
+            *term.keys()
+        ], values=[
+            compile_term(val, known_vars)
+            for val in term.values()
+        ])
+
+    return ast.Constant(value=term, kind=None)
+
+
+def check_for_ask_constraint(param, known_vars, get_value=False):
+    if isinstance(param, chrast.Var):
+        if get_value:
+            return compile_get_value(known_vars[param.name])
+        return known_vars[param.name]
+    if isinstance(param, tuple):
+        return ast.Tuple(elts=[
+            check_for_ask_constraint(subterm, known_vars, get_value=get_value)
+            for subterm in param
+        ])
+    if isinstance(param, list):
+        return ast.List(elts=[
+            check_for_ask_constraint(subterm, known_vars, get_value=get_value)
+            for subterm in param
+        ])
+    if isinstance(param, dict):
+        ks, vs = zip(*(
+            (
+                compile_term(key, known_vars),
+                check_for_ask_constraint(val, known_vars, get_value=get_value)
+            )
+            for key, val in param.items()
+        ))
+        return ast.Dict(keys=ks, values=vs)
+
+    return ast.Constant(value=param, kind=None)
+
+
+def check_for_tell_constraint(param, known_vars, get_value=False):
+    if isinstance(param, chrast.Var):
+        if param.name not in known_vars:
+            var_ast = ast.Name(id=param.name, ctx=ast.Load())
+            known_vars[param.name] = var_ast
+        else:
+            var_ast = known_vars[param.name]
+        if get_value:
+            return compile_get_value(known_vars[param.name])
+        return var_ast
+
+    if isinstance(param, tuple):
+        return ast.Tuple(elts=[
+            check_for_tell_constraint(subterm, known_vars, get_value=get_value)
+            for subterm in param
+        ])
+    if isinstance(param, list):
+        return ast.List(elts=[
+            check_for_tell_constraint(subterm, known_vars, get_value=get_value)
+            for subterm in param
+        ])
+    if isinstance(param, dict):
+        ks, vs = zip(*(
+            (
+                compile_term(key, known_vars),
+                check_for_tell_constraint(val, known_vars, get_value=get_value)
+            )
+            for key, val in param.items()
+        ))
+        return ast.Dict(keys=ks, values=vs)
+
+    return ast.Constant(value=param, kind=None)
+
+
+def compile_tell_constraint(symbol, params, known_vars):
+    arity = len(params)
+    if (symbol, arity) not in TELL_OPS:
+        raise Exception(f'unknown symbol: {symbol}/{arity}')
+
+    prepared_params = [
+        check_for_tell_constraint(param, known_vars, get_value=force_ground)
+        for param, force_ground
+        in zip(params, TELL_OPS_GROUNDNESS[symbol, arity])
+    ]
+
+    return TELL_OPS[symbol, arity](prepared_params)
+
+
+def compile_ask_constraint(symbol, params, known_vars):
+    arity = len(params)
+    if (symbol, arity) not in ASK_OPS:
+        raise Exception(f'unknown symbol: {symbol}/{arity}')
+
+    prepared_params = [
+        check_for_ask_constraint(param, known_vars, get_value=force_ground)
+        for param, force_ground
+        in zip(params, ASK_OPS_GROUNDNESS[symbol, arity])
+    ]
+    result = ASK_OPS[symbol, arity](prepared_params)
+    return result
+
+
+def compile_guard_constraint(c, known_vars):
+    cat, symbol = c.symbol.split('_')
+
+    if cat == 'ask':
+        return compile_ask_constraint(symbol, c.params, known_vars)
+    elif cat == 'tell':
+        return compile_tell_constraint(symbol, c.params, known_vars)
+
+
+def compile_destructuring(value_ast, pattern, known_vars):
+    if isinstance(pattern, chrast.Var):
+        if pattern.name in known_vars:
+            if known_vars[pattern.name]:
+                return [
+                           ast.Compare(
+                               left=known_vars[pattern.name],
+                               ops=[ast.Eq()],
+                               comparators=[value_ast]
+                           )
+                       ], []
+            else:
+                known_vars[pattern.name] = value_ast
+                return [], []
+
+        known_vars[pattern.name] = value_ast
+        return [], [
+            ast.Assign(
+                targets=ast.Name(id=pattern.name),
+                value=value_ast
+            )
+        ]
+
+    val_bound = ast.Call(
+        func=ast.Name(id="is_bound"),
+        args=[value_ast],
+        keywords=[]
+    )
+
+    if isinstance(pattern, (tuple, list, dict)):
+
+        iter = enumerate(pattern) if isinstance(pattern, (tuple, list)) else pattern.items()
+
+        checks, stmts = [], []
+
+        if isinstance(pattern, (tuple, list)):
+            checks.append(
+                ast.Compare(
+                    left=ast.Call(func=ast.Name(id="len"), args=[
+                        compile_get_value(value_ast)
+                    ], keywords=[]),
+                    ops=[ast.Eq()],
+                    comparators=[ast.Constant(value=len(pattern), kind=None)]
+                )
+            )
+
+        else:
+            checks += [
+                ast.Compare(
+                    left=ast.Constant(value=key, kind=None),
+                    ops=[ast.In()],
+                    comparators=[compile_get_value(value_ast)]
+                )
+                for key in pattern.keys()
+            ]
+
+        for key, subpattern in iter:
+            check, stmt = compile_destructuring(
+                ast.Subscript(
+                    value=value_ast,
+                    slice=ast.Index(value=ast.Constant(
+                        value=key,
+                        kind=None
+                    ))
+                ),
+                subpattern,
+                known_vars
+            )
+
+            checks += check
+            stmts += stmt
+
+        return [
+                   val_bound,
+                   ast.Call(
+                       func=ast.Name(id="isinstance"),
+                       args=[
+                           compile_get_value(value_ast),
+                           ast.Name(id=type(pattern).__name__),
+                       ],
+                       keywords=[]
+                   ),
+                   *checks
+               ], stmts
+
+    return [
+               val_bound,
+               ast.Compare(
+                   left=value_ast,
+                   ops=[ast.Eq()],
+                   comparators=[ast.Constant(value=pattern, kind=None)]
+               )
+           ], []
+
+
 class Emitter:
 
     def __init__(self, existentials=None):
@@ -479,117 +725,6 @@ class Emitter:
             )
         ])
 
-    def check_for_ask_constraint(self, param, known_vars, get_value=False):
-        if isinstance(param, chrast.Var):
-            if get_value:
-                return compile_get_value(known_vars[param.name])
-            return known_vars[param.name]
-        if isinstance(param, tuple):
-            return ast.Tuple(elts=[
-                self.check_for_ask_constraint(subterm, known_vars, get_value=get_value)
-                for subterm in param
-            ])
-        if isinstance(param, list):
-            return ast.List(elts=[
-                self.check_for_ask_constraint(subterm, known_vars, get_value=get_value)
-                for subterm in param
-            ])
-        if isinstance(param, dict):
-            ks, vs = zip(*(
-                (
-                    self.compile_term(key, known_vars),
-                    self.check_for_ask_constraint(val, known_vars, get_value=get_value)
-                )
-                for key, val in param.items()
-            ))
-            return ast.Dict(keys=ks, values=vs)
-
-        return ast.Constant(value=param, kind=None)
-
-    def check_for_tell_constraint(self, param, known_vars, get_value=False):
-        if isinstance(param, chrast.Var):
-            if param.name not in known_vars:
-                var_ast = ast.Name(id=param.name, ctx=ast.Load())
-                known_vars[param.name] = var_ast
-            else:
-                var_ast = known_vars[param.name]
-            if get_value:
-                return compile_get_value(known_vars[param.name])
-            return var_ast
-
-        if isinstance(param, tuple):
-            return ast.Tuple(elts=[
-                self.check_for_tell_constraint(subterm, known_vars, get_value=get_value)
-                for subterm in param
-            ])
-        if isinstance(param, list):
-            return ast.List(elts=[
-                self.check_for_tell_constraint(subterm, known_vars, get_value=get_value)
-                for subterm in param
-            ])
-        if isinstance(param, dict):
-            ks, vs = zip(*(
-                (
-                    self.compile_term(key, known_vars),
-                    self.check_for_tell_constraint(val, known_vars, get_value=get_value)
-                )
-                for key, val in param.items()
-            ))
-            return ast.Dict(keys=ks, values=vs)
-
-        return ast.Constant(value=param, kind=None)
-
-    def compile_term(self, term, known_vars):
-        if isinstance(term, chrast.Term):
-            symbol = term.symbol
-            arity = len(term.params)
-            subterms = []
-
-            for subterm in term.params:
-                subterm_eval = self.compile_term(subterm, known_vars)
-                subterms += [subterm_eval]
-
-            if symbol == '-' and arity == 1:
-                return ast.UnaryOp(
-                    ast.Invert(),
-                    operand=subterms[0]
-                )
-            elif symbol in TERM_OPS and arity == 2:
-                return ast.BinOp(
-                    left=subterms[0],
-                    op=TERM_OPS[symbol],
-                    right=subterms[1]
-                )
-            else:
-                raise Exception(f"unknown operator: {symbol}/{arity}")
-
-        if isinstance(term, chrast.Var):
-            if not known_vars[term.name]:
-                known_vars[term.name] = ast.Name(id=term.name)
-            return compile_get_value(known_vars[term.name])
-
-        if isinstance(term, list):
-            return ast.List(elts=[
-                self.compile_term(subterm, known_vars)
-                for subterm in term
-            ])
-
-        if isinstance(term, tuple):
-            return ast.Tuple(elts=[
-                self.compile_term(subterm, known_vars)
-                for subterm in term
-            ])
-
-        if isinstance(term, dict):
-            return ast.List(keys=[
-                *term.keys()
-            ], values=[
-                self.compile_term(val, known_vars)
-                for val in term.values()
-            ])
-
-        return ast.Constant(value=term, kind=None)
-
     def compile_fresh(self, varname=None, value_ast=None):
         if not varname:
             varname = self.gensym(prefix="local")
@@ -606,58 +741,32 @@ class Emitter:
         )
         return varname, stmt
 
-    def compile_tell_constraint(self, symbol, params, known_vars):
-        arity = len(params)
-        if (symbol, arity) not in TELL_OPS:
-            raise Exception(f'unknown symbol: {symbol}/{arity}')
-
-        prepared_params = [
-            self.check_for_tell_constraint(param, known_vars, get_value=force_ground)
-            for param, force_ground
-            in zip(params, TELL_OPS_GROUNDNESS[symbol, arity])
-        ]
-
-        return TELL_OPS[symbol, arity](prepared_params)
-
-    def compile_ask_constraint(self, symbol, params, known_vars):
-        arity = len(params)
-        if (symbol, arity) not in ASK_OPS:
-            raise Exception(f'unknown symbol: {symbol}/{arity}')
-
-        prepared_params = [
-            self.check_for_ask_constraint(param, known_vars, get_value=force_ground)
-            for param, force_ground
-            in zip(params, ASK_OPS_GROUNDNESS[symbol, arity])
-        ]
-        result = ASK_OPS[symbol, arity](prepared_params)
-        return result
-
     def compile_body_constraint(self, c, known_vars):
         symbol = c.symbol
         params = c.params
 
         inits = []
-        vars = []
+        variables = []
 
         for param in params:
             if isinstance(param, chrast.Var):
-                vars.append(param.name)
+                variables.append(param.name)
                 if param.name not in known_vars or not known_vars[param.name]:
                     known_vars[param.name] = ast.Name(id=param.name)
                     inits.append(self.compile_fresh(varname=param.name)[1])
             else:
-                value_ast = self.compile_term(param, known_vars)
+                value_ast = compile_term(param, known_vars)
                 var, init = self.compile_fresh(value_ast=value_ast)
 
                 inits += [init]
-                vars.append(var)
+                variables.append(var)
                 known_vars[var] = ast.Name(id=var)
 
         if symbol == "false":
             false_stmt = ast.Raise(
                 exc=ast.Call(
                     func=ast.Name(id="CHRFalse"),
-                    args=[compile_get_value(known_vars[var]) for var in vars],
+                    args=[compile_get_value(known_vars[var]) for var in variables],
                     keywords=[]
                 ),
                 cause=None
@@ -676,7 +785,7 @@ class Emitter:
                 targets=[ast.Name(id=new_constr, ctx=ast.Load())],
                 value=ast.Tuple(elts=[
                     ast.Constant(value=c.signature, kind=None),
-                    *[known_vars[var] for var in vars]
+                    *[known_vars[var] for var in variables]
                 ])
             )
 
@@ -687,14 +796,14 @@ class Emitter:
                 )
             )
 
-            return [*inits, new_id_stmt, new_constr_stmt, insert_stmt], new_id, [known_vars[var] for var in vars]
+            return [*inits, new_id_stmt, new_constr_stmt, insert_stmt], new_id, [known_vars[var] for var in variables]
 
-        new_builtin_constraint = chrast.Constraint(symbol, list(map(chrast.Var, vars)))
+        new_builtin_constraint = chrast.Constraint(symbol, list(map(chrast.Var, variables)))
 
         builtin_stmt = ast.If(
             test=ast.UnaryOp(
                 op=ast.Not(),
-                operand=self.compile_guard_constraint(new_builtin_constraint, known_vars)
+                operand=compile_guard_constraint(new_builtin_constraint, known_vars)
             ),
             body=[
                 ast.Raise(
@@ -708,7 +817,7 @@ class Emitter:
                                     args=[known_vars[vname]],
                                     keywords=[]
                                 )
-                                for vname in vars
+                                for vname in variables
                             )
                         ],
                         keywords=[]
@@ -720,14 +829,6 @@ class Emitter:
         )
 
         return [*inits, builtin_stmt], None, None
-
-    def compile_guard_constraint(self, c, known_vars):
-        cat, symbol = c.symbol.split('_')
-
-        if cat == 'ask':
-            return self.compile_ask_constraint(symbol, c.params, known_vars)
-        elif cat == 'tell':
-            return self.compile_tell_constraint(symbol, c.params, known_vars)
 
     def compile_body(self, total_heads, known_vars, removed_ids, occurrence_scheme):
 
@@ -743,7 +844,7 @@ class Emitter:
 
         guarded_body = ast.If(
             test=ast.BoolOp(op=ast.And(), values=[
-                self.compile_guard_constraint(c, known_vars)
+                compile_guard_constraint(c, known_vars)
                 for c in occurrence_scheme.guard
             ]),
             orelse=[ast.Expr(value=compile_builtin_call("backtrack", []))]
@@ -754,7 +855,6 @@ class Emitter:
         kills = [ast.Expr(value=compile_delete(id)) for id in removed_ids]
 
         body_constraints = []
-        activates = []
 
         for c in occurrence_scheme.body:
             stmts, new_id, args = self.compile_body_constraint(c, known_vars)
@@ -780,7 +880,6 @@ class Emitter:
                 *kills,
                 *body_constraints,
                 ast.Expr(value=compile_builtin_call("commit", [])),
-                # *activates,
                 finalize
             ]
         )
@@ -826,9 +925,8 @@ class Emitter:
         uncheckable_matchings = []
 
         for matching in matchings:
-            m = chrast.vars(matching)
             if all(v in known_vars for v in chrast.vars(matching)):
-                check, destruct = self.compile_destructuring(
+                check, destruct = compile_destructuring(
                     known_vars[matching.params[0].name],
                     matching.params[1],
                     known_vars
@@ -884,100 +982,6 @@ class Emitter:
 
         return matching_loop
 
-    def compile_destructuring(self, value_ast, pattern, known_vars):
-        if isinstance(pattern, chrast.Var):
-            if pattern.name in known_vars:
-                if known_vars[pattern.name]:
-                    return [
-                               ast.Compare(
-                                   left=known_vars[pattern.name],
-                                   ops=[ast.Eq()],
-                                   comparators=[value_ast]
-                               )
-                           ], []
-                else:
-                    known_vars[pattern.name] = value_ast
-                    return [], []
-
-            known_vars[pattern.name] = value_ast
-            return [], [
-                ast.Assign(
-                    targets=ast.Name(id=pattern.name),
-                    value=value_ast
-                )
-            ]
-
-        val_bound = ast.Call(
-            func=ast.Name(id="is_bound"),
-            args=[value_ast],
-            keywords=[]
-        )
-
-        if isinstance(pattern, (tuple, list, dict)):
-
-            iter = enumerate(pattern) if isinstance(pattern, (tuple, list)) else pattern.items()
-
-            checks, stmts = [], []
-
-            if isinstance(pattern, (tuple, list)):
-                checks.append(
-                    ast.Compare(
-                        left=ast.Call(func=ast.Name(id="len"), args=[
-                            compile_get_value(value_ast)
-                        ], keywords=[]),
-                        ops=[ast.Eq()],
-                        comparators=[ast.Constant(value=len(pattern), kind=None)]
-                    )
-                )
-
-            else:
-                checks += [
-                    ast.Compare(
-                        left=ast.Constant(value=key, kind=None),
-                        ops=[ast.In()],
-                        comparators=[compile_get_value(value_ast)]
-                    )
-                    for key in pattern.keys()
-                ]
-
-            for key, subpattern in iter:
-                check, stmt = self.compile_destructuring(
-                    ast.Subscript(
-                        value=value_ast,
-                        slice=ast.Index(value=ast.Constant(
-                            value=key,
-                            kind=None
-                        ))
-                    ),
-                    subpattern,
-                    known_vars
-                )
-
-                checks += check
-                stmts += stmt
-
-            return [
-                       val_bound,
-                       ast.Call(
-                           func=ast.Name(id="isinstance"),
-                           args=[
-                               compile_get_value(value_ast),
-                               ast.Name(id=type(pattern).__name__),
-                           ],
-                           keywords=[]
-                       ),
-                       *checks
-                   ], stmts
-
-        return [
-                   val_bound,
-                   ast.Compare(
-                       left=value_ast,
-                       ops=[ast.Eq()],
-                       comparators=[ast.Constant(value=pattern, kind=None)]
-                   )
-               ], []
-
     def compile_occurrence(self, occurrence_scheme):
         _, current = occurrence_scheme.occurring_constraint
         heads = occurrence_scheme.other_constraints
@@ -985,17 +989,17 @@ class Emitter:
 
         symbol = current.symbol
         arity = current.arity
-        vars = current.params
+        variables = current.params
         idx = current.occurrence_idx
-        id = 'id_0'
+        current_index = 'id_0'
 
         removed_ids = set()
 
         if not current.kept:
-            removed_ids.add('id_0')
+            removed_ids.add(current_index)
 
         known_vars = {
-            **{var: ast.Name(id=var) for var in vars},
+            **{var: ast.Name(id=var) for var in variables},
             **{var: None for var in occurrence_scheme.free_vars()}
         }
 
@@ -1003,9 +1007,8 @@ class Emitter:
         uncheckable_matchings = []
 
         for matching in matchings:
-            m = chrast.vars(matching)
             if all(v in known_vars for v in chrast.vars(matching)):
-                check, destruct = self.compile_destructuring(
+                check, destruct = compile_destructuring(
                     known_vars[matching.params[0].name],
                     matching.params[1],
                     known_vars
@@ -1034,7 +1037,7 @@ class Emitter:
                 body=check_and_destr
             )]
 
-        args = [ast.arg(arg=f'id_0', annotation=None)]
+        args = [ast.arg(arg=current_index, annotation=None)]
         args += [ast.arg(arg=param, annotation=None) for param in current.params]
 
         procname = f'__{symbol}_{arity}_{idx}'
