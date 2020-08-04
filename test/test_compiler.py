@@ -1,6 +1,6 @@
 import pytest
 
-from chr.compiler import chr_compile
+from chr.old_compiler import chr_compile
 from chr.runtime import CHRFalse
 from random import sample
 from math import inf
