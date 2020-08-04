@@ -114,6 +114,21 @@ def gen_bin_op(op, lhs, rhs):
     return ast.BinOp(left=lhs, op=BUILTIN_ARITH_OPERATOR_TRANSLATION[op], right=rhs)
 
 
+def gen_list(*elts):
+    return ast.List(elts=list(elts))
+
+
+def gen_tuple(*elts):
+    return ast.Tuple(elts=list(elts))
+
+
+def gen_dict(**pairs):
+    return ast.Dict(*zip(**pairs))
+
+
+def gen_constant(constant):
+    return ast.Constant(value=constant, kind=None)
+
 BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS = {
     "==": ast.Eq,
     "!=": ast.NotEq,
@@ -155,16 +170,16 @@ def compile_term(term, known_variables):
         return known_variables[term.name]
 
     if isinstance(term, dict):
-        return {
+        return gen_dict(**{
             key: compile_term(sub_term, known_variables)
             for key, sub_term in term.items()
-        }
+        })
 
     if isinstance(term, (tuple, list)):
-        return type(term)(
+        return (gen_tuple if isinstance(term, tuple) else gen_list)(*(
             compile_term(sub_term, known_variables)
             for sub_term in term
-        )
+        ))
 
     if isinstance(term, Term):
         if term.symbol in BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS:
@@ -189,7 +204,7 @@ def compile_term(term, known_variables):
             )
         )
 
-    return term
+    return gen_constant(term)
 
 
 def compile_fresh_constraint(name_gen: NameGenerator, variable_name, known_variables, value_ast=None) -> ast.Assign:

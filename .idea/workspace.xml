@@ -26,10 +26,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/chr/old_compiler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/compiler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_compiler.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +104,14 @@
       <option name="project" value="LOCAL" />
       <updated>1596559367174</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Reworking Compiler">
+      <created>1596566976220</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1596566976220</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -152,31 +156,31 @@
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
     <state x="961" y="764" width="628" height="404" key="#com.intellij.fileTypes.FileTypeChooser/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550147129" />
-    <state width="2535" height="457" key="GridCell.Tab.0.bottom" timestamp="1596559241069">
+    <state width="2535" height="457" key="GridCell.Tab.0.bottom" timestamp="1596566980316">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596559241069" />
-    <state width="2535" height="457" key="GridCell.Tab.0.center" timestamp="1596559241068">
+    <state width="2535" height="457" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980316" />
+    <state width="2535" height="457" key="GridCell.Tab.0.center" timestamp="1596566980315">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596559241068" />
-    <state width="2535" height="457" key="GridCell.Tab.0.left" timestamp="1596559241068">
+    <state width="2535" height="457" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980315" />
+    <state width="2535" height="457" key="GridCell.Tab.0.left" timestamp="1596566980315">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596559241068" />
-    <state width="2535" height="457" key="GridCell.Tab.0.right" timestamp="1596559241069">
+    <state width="2535" height="457" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980315" />
+    <state width="2535" height="457" key="GridCell.Tab.0.right" timestamp="1596566980315">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596559241069" />
+    <state width="2535" height="457" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980315" />
     <state x="588" y="477" key="SettingsEditor" timestamp="1596543784361">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
     <state x="588" y="477" key="SettingsEditor/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596543784361" />
     <state x="441" y="189" key="SettingsEditor/0.28.1920.1052@0.28.1920.1052" timestamp="1596446906607" />
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1596550935784">
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1596567000848">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550935784" />
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596567000848" />
     <state x="943" y="583" width="672" height="678" key="search.everywhere.popup" timestamp="1596563678496">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
