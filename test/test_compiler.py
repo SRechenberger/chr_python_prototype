@@ -2,11 +2,21 @@ import pytest
 
 from chr.compiler import chr_compile
 from chr.runtime import CHRFalse
+from random import sample
+from math import inf
+
+PROJECT_FOLDER=".."
+
+
+def compile_test_file(filename, solver_name):
+    with open(f"{PROJECT_FOLDER}/test_files/{filename}.chr", "r") as f:
+        chr_compile(solver_name, f.read(), target_file=f"{PROJECT_FOLDER}/generated/{filename}.py")
 
 
 def test_sum_solver():
-    with open("test_files/sum_solver.chr", "r") as f:
-        chr_compile("SumSolver", f.read(), target_file="generated/sum_solver.py")
+    with open(f"{PROJECT_FOLDER}/test_files/sum_solver.chr", "r") as f:
+        chr_compile("SumSolver", f.read(), target_file=f"{PROJECT_FOLDER}/generated/sum_solver.py")
+
     from generated.sum_solver import SumSolver
 
     solver = SumSolver()
@@ -28,8 +38,8 @@ def test_sum_solver():
 
 
 def test_triple_solver():
-    with open("test_files/triple.chr", "r") as f:
-        chr_compile("TripleSolver", f.read(), target_file="generated/triple.py")
+    with open(f"{PROJECT_FOLDER}/test_files/triple.chr", "r") as f:
+        chr_compile("TripleSolver", f.read(), target_file=f"{PROJECT_FOLDER}/generated/triple.py")
 
     from generated.triple import TripleSolver
 
@@ -51,8 +61,8 @@ def test_triple_solver():
 
 
 def test_eq_solver():
-    with open("test_files/eq_solver.chr", "r") as f:
-        chr_compile("EqSolver", f.read(), target_file="generated/eq_solver.py")
+    with open(f"{PROJECT_FOLDER}/test_files/eq_solver.chr", "r") as f:
+        chr_compile("EqSolver", f.read(), target_file=f"{PROJECT_FOLDER}/generated/eq_solver.py")
 
     from generated.eq_solver import EqSolver
 
@@ -74,8 +84,8 @@ def test_eq_solver():
 
 
 def test_guard_tell():
-    with open("test_files/guard_tell.chr", "r") as f:
-        chr_compile("GuardTell", f.read(), target_file="generated/guard_tell.py")
+    with open(f"{PROJECT_FOLDER}/test_files/guard_tell.chr", "r") as f:
+        chr_compile("GuardTell", f.read(), target_file=f"{PROJECT_FOLDER}/generated/guard_tell.py")
 
     from generated.guard_tell import GuardTell
 
@@ -89,8 +99,8 @@ def test_guard_tell():
 
 
 def test_error_message():
-    with open("test_files/error_message.chr", "r") as f:
-        chr_compile("ErrorSolver", f.read(), target_file="generated/error_message.py")
+    with open(f"{PROJECT_FOLDER}/test_files/error_message.chr", "r") as f:
+        chr_compile("ErrorSolver", f.read(), target_file=f"{PROJECT_FOLDER}/generated/error_message.py")
 
     from generated.error_message import ErrorSolver
 
@@ -103,8 +113,8 @@ def test_error_message():
 
 
 def test_leq_solver():
-    with open("test_files/leq_solver.chr", "r") as f:
-        chr_compile("LeqSolver", f.read(), target_file="generated/leq_solver.py")
+    with open(f"{PROJECT_FOLDER}/test_files/leq_solver.chr", "r") as f:
+        chr_compile("LeqSolver", f.read(), target_file=f"{PROJECT_FOLDER}/generated/leq_solver.py")
 
     from generated.leq_solver import LeqSolver
 
@@ -133,8 +143,8 @@ def test_leq_solver():
 
 
 def test_fibonacci():
-    with open("test_files/fibonacci.chr", "r") as f:
-        chr_compile("Fibonacci", f.read(), target_file="generated/fibonacci.py")
+    with open(f"{PROJECT_FOLDER}/test_files/fibonacci.chr", "r") as f:
+        chr_compile("Fibonacci", f.read(), target_file=f"{PROJECT_FOLDER}/generated/fibonacci.py")
 
     from generated.fibonacci import Fibonacci
 
@@ -155,8 +165,8 @@ def test_fibonacci():
 
 
 def test_match():
-    with open("test_files/match_solver.chr", "r") as f:
-        chr_compile("MatchTest", f.read(), target_file="generated/match_test.py")
+    with open(f"{PROJECT_FOLDER}/test_files/match_solver.chr", "r") as f:
+        chr_compile("MatchTest", f.read(), target_file=f"{PROJECT_FOLDER}/generated/match_test.py")
 
     from generated.match_test import MatchTest
 
@@ -171,8 +181,8 @@ def test_match():
 
 
 def test_gcd():
-    with open("test_files/gcd_solver.chr", "r") as f:
-        chr_compile("GCDSolver", f.read(), target_file="generated/gcd_solver.py")
+    with open(f"{PROJECT_FOLDER}/test_files/gcd_solver.chr", "r") as f:
+        chr_compile("GCDSolver", f.read(), target_file=f"{PROJECT_FOLDER}/generated/gcd_solver.py")
 
     from generated.gcd_solver import GCDSolver
 
@@ -197,8 +207,8 @@ def test_gcd():
 
 
 def test_length():
-    with open("test_files/length.chr", "r") as f:
-        chr_compile("LengthSolver", f.read(), target_file="generated/length.py")
+    with open(f"{PROJECT_FOLDER}/test_files/length.chr", "r") as f:
+        chr_compile("LengthSolver", f.read(), target_file=f"{PROJECT_FOLDER}/generated/length.py")
 
     from generated.length import LengthSolver
 
@@ -220,3 +230,25 @@ def test_length():
     solver.length((1, (2, "Nil")), l3)
     assert len(solver.dump_chr_store()) == 0
     assert l3 == 2
+
+    l4 = solver.fresh_var()
+    solver.length(l4, 5)
+    assert len(solver.dump_chr_store()) == 0
+    assert l4.is_bound()
+
+
+def test_minimum():
+    compile_test_file("minimum", "Minimum")
+
+    from generated.minimum import Minimum
+
+    solver = Minimum()
+
+    current_minimum = inf
+
+    for x in sample(range(0, 1000), 200):
+        current_minimum = current_minimum if current_minimum < x else x
+        solver.min(x)
+        dump = solver.dump_chr_store()
+        assert len(dump) == 1
+        assert ("min/1", current_minimum) in dump

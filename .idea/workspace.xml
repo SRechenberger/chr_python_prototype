@@ -20,8 +20,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/test_files/minimum.chr" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/compiler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_compiler.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,6 +45,29 @@
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="settings.editor.selected.configurable" value="editor.preferences.fonts.default" />
   </component>
+  <component name="RunManager">
+    <configuration name="pytest in test" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="chr-python" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/test" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/test&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python tests.pytest in test" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SvnConfiguration">
     <configuration />
   </component>
@@ -55,6 +79,14 @@
       <option name="presentableId" value="Default" />
       <updated>1596446669507</updated>
     </task>
+    <task id="LOCAL-00001" summary="Modified test file path for pytest">
+      <created>1596543686306</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1596543686306</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -69,14 +101,39 @@
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Modified test file path for pytest" />
+    <option name="LAST_COMMIT_MESSAGE" value="Modified test file path for pytest" />
+  </component>
   <component name="WindowStateProjectService">
     <state x="418" y="212" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1596448612254">
       <screen x="0" y="28" width="1920" height="1052" />
     </state>
     <state x="418" y="212" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.28.1920.1052@0.28.1920.1052" timestamp="1596448612254" />
-    <state x="441" y="189" key="SettingsEditor" timestamp="1596446906607">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state x="961" y="764" width="628" height="404" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1596550147129">
+      <screen x="0" y="261" width="2560" height="1412" />
     </state>
+    <state x="961" y="764" width="628" height="404" key="#com.intellij.fileTypes.FileTypeChooser/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550147129" />
+    <state width="2535" height="396" key="GridCell.Tab.0.bottom" timestamp="1596550396376">
+      <screen x="0" y="261" width="2560" height="1412" />
+    </state>
+    <state width="2535" height="396" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550396376" />
+    <state width="2535" height="396" key="GridCell.Tab.0.center" timestamp="1596550396376">
+      <screen x="0" y="261" width="2560" height="1412" />
+    </state>
+    <state width="2535" height="396" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550396376" />
+    <state width="2535" height="396" key="GridCell.Tab.0.left" timestamp="1596550396376">
+      <screen x="0" y="261" width="2560" height="1412" />
+    </state>
+    <state width="2535" height="396" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550396376" />
+    <state width="2535" height="396" key="GridCell.Tab.0.right" timestamp="1596550396376">
+      <screen x="0" y="261" width="2560" height="1412" />
+    </state>
+    <state width="2535" height="396" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550396376" />
+    <state x="588" y="477" key="SettingsEditor" timestamp="1596543784361">
+      <screen x="0" y="261" width="2560" height="1412" />
+    </state>
+    <state x="588" y="477" key="SettingsEditor/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596543784361" />
     <state x="441" y="189" key="SettingsEditor/0.28.1920.1052@0.28.1920.1052" timestamp="1596446906607" />
   </component>
 </project>
