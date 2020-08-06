@@ -39,7 +39,6 @@ class CHRStore:
         return id
 
     def add_to_history(self, rule_name, *ids):
-        print("FIRE:", rule_name, *ids)
         ids_set = set(ids)
         if rule_name in self.history:
             self.history[rule_name].append(ids_set)
@@ -92,12 +91,9 @@ class CHRStore:
             self.constraints[id] = constraint
 
     def delete(self, id):
-        print("CONSTRAINTS:", self.constraints)
         if id in self.constraints:
             del self.constraints[id]
-            print("DELETED", id)
             self.alive_set[id] = False
-            print("CONSTRAINTS AFTER DELETE:", self.constraints)
         else:
             raise Exception(f'constraint with id {id} unknown')
 

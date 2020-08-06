@@ -1,3 +1,5 @@
+class Fibonacci.
+
 constraints fib/1, result/1, read/1.
 
 fib($N) <=> $N > 1 | fib($N-1), fib($N-2).

@@ -1,3 +1,5 @@
+class EqSolver.
+
 constraints eq/2.
 
 cleanup       @ eq($X, $Y) \ eq($X, $Y) <=> true.

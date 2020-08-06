@@ -1,3 +1,5 @@
+class GCDSolver.
+
 constraints gcd/1.
 
 error @ gcd($_0) <=> is_bound($_0), $_0 < 0 | false("Number < Zero").

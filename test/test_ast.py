@@ -2,7 +2,7 @@ from chr.ast import *
 
 
 def test_program_processing():
-    program = Program(user_constraints=["gcd/1"], rules=[
+    program = Program(class_name="GCDSolver", user_constraints=["gcd/1"], rules=[
         Rule(
             name="r1",
             kept_head=[],
@@ -22,7 +22,7 @@ def test_program_processing():
         )
     ])
 
-    processed = Program(user_constraints=["gcd/1"], rules=[
+    processed = Program(class_name="GCDSolver", user_constraints=["gcd/1"], rules=[
         ProcessedRule(
             name="r1",
             head=[HeadConstraint("gcd", 0, ["N"], False)],

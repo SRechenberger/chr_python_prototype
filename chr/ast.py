@@ -292,7 +292,8 @@ class ProcessedRule:
 
 
 class Program:
-    def __init__(self, user_constraints, rules):
+    def __init__(self, class_name, user_constraints, rules):
+        self.class_name = class_name
         self.user_constraints = user_constraints
         self.rules = rules
 
@@ -308,6 +309,7 @@ class Program:
 
     def get_normal_form(self):
         return Program(
+            self.class_name,
             self.user_constraints,
             [rule.get_normal_form() for rule in self.rules]
         )
@@ -354,4 +356,4 @@ class Program:
                 body=rule.body
             ))
 
-        return Program(self.user_constraints, rules), symbols
+        return Program(self.class_name, self.user_constraints, rules), symbols

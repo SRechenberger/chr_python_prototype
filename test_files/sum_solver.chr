@@ -1,3 +1,5 @@
+class SumSolver.
+
 constraints sum/1, read/1.
 
 sum(0) <=> true.

@@ -97,7 +97,10 @@ def test_guard_body():
         assert parse_body.parse(input_string) == expected_output
 
 
-program_code = '''constraints gcd/1.
+program_code = '''
+class GCDSolver.
+
+constraints gcd/1.
 
 error @ gcd($_0) <=> ask_bound($_0), $_0 < 0 | false("Number < Zero").
 r1 @ gcd(0) <=> true.
@@ -106,7 +109,7 @@ r2 @ gcd($_0) \\ gcd($_1) <=>
     $_2 = $_1 - $_0, gcd($_2).
 '''
 
-program = Program(user_constraints=["gcd/1"], rules=[
+program = Program(class_name="GCDSolver", user_constraints=["gcd/1"], rules=[
     # error @ gcd(_0) <=> _0 < 0 | false.
     Rule(
         name="error",

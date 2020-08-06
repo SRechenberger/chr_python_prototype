@@ -1,3 +1,5 @@
+class MatchTest.
+
 constraints match/1.
 
 match($X) \ match($X) <=> true.

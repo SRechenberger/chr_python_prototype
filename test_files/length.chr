@@ -1,3 +1,5 @@
+class LengthSolver.
+
 constraints length/2.
 
 length("Nil", $L) <=> $L = 0.

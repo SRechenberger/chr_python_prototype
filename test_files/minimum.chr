@@ -1,3 +1,5 @@
+class MinimumSolver.
+
 constraints min/1.
 
 min($X) \ min($Y) <=> $X < $Y | true.

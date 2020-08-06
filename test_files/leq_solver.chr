@@ -1,5 +1,6 @@
-constraints leq/2.
+class LeqSolver.
 
+constraints leq/2.
 
 reflexivity  @ leq($_0, $_0) <=> true.
 idempotence  @ leq($_0, $_1) \ leq($_0, $_1) <=> true.

@@ -1245,9 +1245,9 @@ def compile_omega_r_program(solver_class_name: str, program: Program) -> ast.Mod
     ])
 
 
-def chr_compile(solver_class_name: str, source: str, target_file: str = None) -> str:
+def chr_compile(source: str, target_file: str = None) -> str:
     chr_ast, _ = chr_parse(source).get_normal_form().omega_r()
-    python_ast = compile_omega_r_program(solver_class_name, chr_ast)
+    python_ast = compile_omega_r_program(chr_ast.class_name, chr_ast)
     try:
         python_code = decompile(python_ast)
     except Exception as err:

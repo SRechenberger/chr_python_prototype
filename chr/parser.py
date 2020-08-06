@@ -36,6 +36,7 @@ lit_number = regex(r'[0-9]+')
 lit_string = regex(r'\".*\"')
 lit_white = regex(r'[\n\t ]*')
 lit_signature = regex(r'[a-z][a-zA-Z0-9_-]*/[0-9]+')
+lit_class_name = regex(r'[A-Za-z_][A-Za-z_0-9]*')
 
 
 def token(s):
@@ -316,6 +317,14 @@ def parse_declaration():
     return cs
 
 
+@generate
+def parse_class_name():
+    yield lit_white >> string("class")
+    c = yield lit_white >> lit_class_name
+    yield token(".")
+    return c
+
+
 def parse_program():
     next_rule_id = 0
 
@@ -326,9 +335,10 @@ def parse_program():
 
     @generate
     def fun():
+        class_name = yield parse_class_name
         decls = yield parse_declaration
         rules = yield parse_rules(rule_name_gen)
-        return Program(decls, rules)
+        return Program(class_name, decls, rules)
 
     return fun
 
