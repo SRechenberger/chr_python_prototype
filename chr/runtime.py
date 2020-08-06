@@ -18,14 +18,9 @@ class CHRFalse(Exception):
         self.messages = messages
 
 
-def all_different(*vals):
-    s = set()
-    for val in vals:
-        if val in s:
-            return False
-        s.add(val)
-
-    return True
+class CHRGuardFail(Exception):
+    def __init__(self, *messages):
+        self.messages = messages
 
 
 class CHRStore:
@@ -44,6 +39,7 @@ class CHRStore:
         return id
 
     def add_to_history(self, rule_name, *ids):
+        print("FIRE:", rule_name, *ids)
         ids_set = set(ids)
         if rule_name in self.history:
             self.history[rule_name].append(ids_set)
@@ -96,9 +92,12 @@ class CHRStore:
             self.constraints[id] = constraint
 
     def delete(self, id):
+        print("CONSTRAINTS:", self.constraints)
         if id in self.constraints:
             del self.constraints[id]
+            print("DELETED", id)
             self.alive_set[id] = False
+            print("CONSTRAINTS AFTER DELETE:", self.constraints)
         else:
             raise Exception(f'constraint with id {id} unknown')
 
@@ -158,11 +157,8 @@ def unify(left, right):
 
 
 def get_value(v):
-    if isinstance(v, LogicVariable):
-        if v.is_bound():
-            return v.get_value()
-        else:
-            raise Exception(f"variable {v} not bound")
+    if isinstance(v, LogicVariable) and v.is_bound():
+        return v.get_value()
     return v
 
 

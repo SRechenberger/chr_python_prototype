@@ -27,6 +27,10 @@
   <component name="ChangeListManager">
     <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/chr/compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/compiler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/chr/runtime.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/runtime.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_files/gcd_solver.chr" beforeDir="false" afterPath="$PROJECT_DIR$/test_files/gcd_solver.chr" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_files/length.chr" beforeDir="false" afterPath="$PROJECT_DIR$/test_files/length.chr" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -111,7 +115,21 @@
       <option name="project" value="LOCAL" />
       <updated>1596566976220</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Fixed 'compile_term'">
+      <created>1596576295034</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1596576295034</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Reworked compiler">
+      <created>1596724563766</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1596724563766</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -141,7 +159,9 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Modified test file path for pytest" />
     <MESSAGE value="Reworking Compiler" />
-    <option name="LAST_COMMIT_MESSAGE" value="Reworking Compiler" />
+    <MESSAGE value="Fixed 'compile_term'" />
+    <MESSAGE value="Reworked compiler" />
+    <option name="LAST_COMMIT_MESSAGE" value="Reworked compiler" />
   </component>
   <component name="WindowStateProjectService">
     <state x="418" y="212" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1596448612254">
@@ -156,31 +176,35 @@
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
     <state x="961" y="764" width="628" height="404" key="#com.intellij.fileTypes.FileTypeChooser/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550147129" />
-    <state width="2535" height="457" key="GridCell.Tab.0.bottom" timestamp="1596566980316">
+    <state width="1080" height="1864" key="GridCell.Tab.0.bottom" timestamp="1596729058235">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980316" />
-    <state width="2535" height="457" key="GridCell.Tab.0.center" timestamp="1596566980315">
+    <state width="1080" height="1864" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596729058235" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.center" timestamp="1596729058234">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980315" />
-    <state width="2535" height="457" key="GridCell.Tab.0.left" timestamp="1596566980315">
+    <state width="1080" height="1864" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596729058234" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.left" timestamp="1596729058234">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980315" />
-    <state width="2535" height="457" key="GridCell.Tab.0.right" timestamp="1596566980315">
+    <state width="1080" height="1864" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596729058234" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.right" timestamp="1596729058235">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="2535" height="457" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596566980315" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596729058235" />
     <state x="588" y="477" key="SettingsEditor" timestamp="1596543784361">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
     <state x="588" y="477" key="SettingsEditor/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596543784361" />
     <state x="441" y="189" key="SettingsEditor/0.28.1920.1052@0.28.1920.1052" timestamp="1596446906607" />
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1596567000848">
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1596576304016">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596567000848" />
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596576304016" />
+    <state x="2560" y="0" width="1080" height="1014" maximized="true" key="dock-window-1" timestamp="1596726752195">
+      <screen x="2560" y="0" width="1080" height="1920" />
+    </state>
+    <state x="2560" y="0" width="1080" height="1014" maximized="true" key="dock-window-1/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596726752195" />
     <state x="943" y="583" width="672" height="678" key="search.everywhere.popup" timestamp="1596563678496">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>

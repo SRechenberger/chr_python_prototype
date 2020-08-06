@@ -1,6 +1,6 @@
 import pytest
 
-from chr.old_compiler import chr_compile
+from chr.compiler import chr_compile
 from chr.runtime import CHRFalse
 from random import sample
 from math import inf
@@ -186,9 +186,13 @@ def test_gcd():
 
     from generated.gcd_solver import GCDSolver
 
+
     solver = GCDSolver()
 
     x = solver.fresh_var()
+
+    solver.gcd(0)
+    assert len(solver.dump_chr_store()) == 0
 
     solver.gcd(100)
     solver.gcd(66)
@@ -202,6 +206,7 @@ def test_gcd():
     solver.builtin.tell_eq(x, 3)
     solver.builtin.commit()
     dump = solver.dump_chr_store()
+    print("DUMP:", dump)
     assert len(dump) == 1
     assert ("gcd/1", 1) in dump
 

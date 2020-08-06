@@ -186,6 +186,30 @@ class NormalizedRule(Rule):
         super().__init__(name, kept_head, removed_head, guard, body)
         self.matching = matching
 
+    def __str__(self):
+        ks = ', '.join(map(str, self.kept_head)) if self.kept_head else None
+        rs = ', '.join(map(str, self.removed_head)) if self.removed_head else None
+        ms = ', '.join(map(str, self.matching)) if self.matching else ""
+        gs = ', '.join(map(str, self.guard)) if self.guard else ""
+        bs = ', '.join(map(str, self.body)) if self.body else "true"
+
+        rule = f'{self.name} @ '
+        if ks and rs:
+            rule += f'{ks} \\ {rs} <=> '
+        elif ks:
+            rule += f'{ks} ==> '
+        elif rs:
+            rule += f'{rs} <=> '
+        else:
+            raise Exception(f'rule with empty head: {self}')
+
+        if ms or gs:
+            rule += f'{ms + gs} | '
+
+        rule += bs
+
+        return rule
+
 
 class OccurrenceScheme:
     def __init__(self, rule_name, occurring_constraint, other_constraints, matching, guard, body):
@@ -203,16 +227,16 @@ class OccurrenceScheme:
                and self.body == other.body
 
     def __str__(self):
-        occ = f'*{self.occurring_constraint}*'
+        occ = f'{self.rule_name} @ *{self.occurring_constraint}*'
         others = ', '.join(map(str, self.other_constraints))
         rule = occ
         if others:
             rule += ', ' + others + " <=> "
 
-        if self.guard:
-            rule += f" {', '.join(map(str, self.guard))} | "
+        if self.guard or self.matching:
+            rule += f" {', '.join(map(str, self.matching + self.guard))} | "
 
-        rule += ' ' + ', '.join(map(str, self.body))
+        rule += ' ' + ', '.join(map(str, self.body)) if self.body else "true"
 
         return rule
 
@@ -252,13 +276,14 @@ class ProcessedRule:
     def __str__(self):
         rule = f"{self.name} @ "
         rule += ', '.join(map(str, self.head)) + ' <=> '
-        if self.guard:
-            rule += ', '.join(map(str, self.guard)) + ' | '
+        if self.guard or self.matching:
+            rule += ', '.join(map(str, self.matching + self.guard)) + ' | '
 
         if self.body:
             rule += ', '.join(map(str, self.body))
         else:
             rule += "true"
+
 
         return rule
 
