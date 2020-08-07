@@ -217,3 +217,19 @@ def test_minimum():
         dump = solver.dump_chr_store()
         assert len(dump) == 1
         assert ("min/1", current_minimum) in dump
+
+
+def test_minimax():
+    from test_files.minimax import Minimax
+
+    solver = Minimax()
+
+    minimum = 1000
+    maximum = 0
+
+    for x in sample(range(1, 100000), 3000):
+        minimum = x if minimum >= x else minimum
+        maximum = x if maximum <= x else maximum
+        solver.a(x)
+
+    assert ("minimax/2", minimum, maximum) in solver.dump_chr_store()

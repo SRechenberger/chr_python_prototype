@@ -1,5 +1,8 @@
 :- use_module(library(chr)).
 
-:- chr_constraint test/1, passed/1.
+:- chr_constraint minimax/2, a/1.
 
-test(_1) ==> _1 = (X, Y, Z) | passed(X), passed((Y, Z)).
+a(X) <=> minimax(X, X).
+minimax(X, _) \ minimax(A, B) <=> X < A | minimax(X, B).
+minimax(_, Y) \ minimax(A, B) <=> Y > B | minimax(A, Y).
+minimax(X, Y) \ minimax(X, Y) <=> true.
