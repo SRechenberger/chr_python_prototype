@@ -233,3 +233,11 @@ def test_minimax():
         solver.a(x)
 
     assert ("minimax/2", minimum, maximum) in solver.dump_chr_store()
+
+
+def test_side_effect():
+    from test_files.side_effects import SideEffectTest
+
+    solver = SideEffectTest()
+
+    solver.p()

@@ -1079,24 +1079,25 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: int) -> Sta
 
     args_ast = gen_name("args")
 
+    delay_checks = [gen_not(gen_name("delayed"))]
+    if arity > 0:
+        delay_checks.append(gen_or(*(
+            gen_and(
+                gen_call(
+                    "isinstance",
+                    gen_subscript_index(args_ast, gen_constant(i)),
+                    gen_name("LogicVariable")
+                ),
+                gen_not(gen_call(
+                    "is_bound",
+                    gen_subscript_index(args_ast, gen_constant(i))
+                ))
+            )
+            for i in range(0, arity)
+        )))
+
     delay_call: Statement = gen_if(
-        gen_and(
-            gen_not(gen_name("delayed")),
-            gen_or(*(
-                gen_and(
-                    gen_call(
-                        "isinstance",
-                        gen_subscript_index(args_ast, gen_constant(i)),
-                        gen_name("LogicVariable")
-                    ),
-                    gen_not(gen_call(
-                        "is_bound",
-                        gen_subscript_index(args_ast, gen_constant(i))
-                    ))
-                )
-                for i in range(0, arity)
-            ))
-        ),
+        gen_and(*delay_checks),
         gen_expr(gen_call(
             gen_attribute(gen_self(), "builtin", "delay"),
             gen_lambda(gen_call(
