@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import argparse
+
+from chr.core import chr_compile, PY_SUFFIX, CHR_SUFFIX
+
+USER_ERROR = "User Error:"
+
+arg_parser = argparse.ArgumentParser(
+    description="Compile CHR(Python) source files into Python modules."
+)
+
+arg_parser.add_argument(
+    'infile', metavar='FILE.chr', type=str,
+    help="file path of the CHR(Python) source file to compile"
+)
+
+arg_parser.add_argument(
+    '-o', '--outfile', metavar="FILE.py", type=str,
+    help="output Python file"
+)
+
+arg_parser.add_argument(
+    '-t', '--timestamp', action='store_true',
+    help="don't output anything, if output file already exists, and is up to date"
+)
+
+arg_parser.add_argument(
+    '-v', '--verbose', action='store_true',
+    help="more verbose output"
+)
+
+if __name__ == '__main__':
+    args = arg_parser.parse_args()
+
+    if not args.infile.endswith(CHR_SUFFIX):
+        print(
+            USER_ERROR,
+            f"file {args.infile} does not seem to be a path to a CHR(Python) source file",
+            f"(i.e. it's name is not ending in {CHR_SUFFIX})",
+            file=sys.stderr
+        )
+        arg_parser.print_help()
+        exit(1)
+
+    if not args.outfile:
+        args.outfile = args.infile[:-len(CHR_SUFFIX)] + PY_SUFFIX
+
+    if not args.outfile.endswith(PY_SUFFIX):
+        print(
+            USER_ERROR,
+            f"file {args.outfile} does not seem to be a path to a Python source file",
+            f"(i.e. it's name is not ending in {PY_SUFFIX})",
+            file=sys.stderr
+        )
+        arg_parser.print_help()
+        exit(1)
+
+    if not os.path.isfile(args.infile):
+        print(USER_ERROR, f"file {args.infile} is not a file.")
+        arg_parser.print_help()
+        exit(1)
+
+    output_written = chr_compile(
+        args.infile,
+        args.outfile,
+        overwrite="timestamp" if args.timestamp else True,
+        verbose=True if args.verbose else False
+    )
+
+    if args.verbose and not output_written:
+        print(f"no output written to {args.outfile}")
+
+    exit(0)

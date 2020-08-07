@@ -25,7 +25,10 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="" />
+    <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/chr_python.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr_python.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -52,6 +55,7 @@
     <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="TERMINAL_CUSTOM_COMMANDS_GOT_IT" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
@@ -215,7 +219,28 @@
       <option name="project" value="LOCAL" />
       <updated>1596799810696</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="work on README.md">
+      <created>1596799891988</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1596799891988</updated>
+    </task>
+    <task id="LOCAL-00019" summary="work on README.md">
+      <created>1596799998043</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1596799998043</updated>
+    </task>
+    <task id="LOCAL-00020" summary="command line tool dummy file">
+      <created>1596800123388</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1596800123388</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -253,7 +278,9 @@
     <MESSAGE value="added chr.utils module" />
     <MESSAGE value="added chr.core module" />
     <MESSAGE value="added README.md" />
-    <option name="LAST_COMMIT_MESSAGE" value="added README.md" />
+    <MESSAGE value="work on README.md" />
+    <MESSAGE value="command line tool dummy file" />
+    <option name="LAST_COMMIT_MESSAGE" value="command line tool dummy file" />
   </component>
   <component name="WindowStateProjectService">
     <state x="418" y="212" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1596448612254">
@@ -293,10 +320,10 @@
     </state>
     <state x="588" y="477" key="SettingsEditor/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596798561815" />
     <state x="441" y="189" key="SettingsEditor/0.28.1920.1052@0.28.1920.1052" timestamp="1596446906607" />
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1596745506352">
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1596800128490">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596745506352" />
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596800128490" />
     <state x="2560" y="0" width="1080" height="1014" maximized="true" key="dock-window-1" timestamp="1596726752195">
       <screen x="2560" y="0" width="1080" height="1920" />
     </state>
