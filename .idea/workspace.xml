@@ -25,10 +25,7 @@
     </select>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -204,7 +201,21 @@
       <option name="project" value="LOCAL" />
       <updated>1596798200205</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="added README.md">
+      <created>1596798903847</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1596798903847</updated>
+    </task>
+    <task id="LOCAL-00017" summary="added README.md">
+      <created>1596799810696</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1596799810696</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -241,7 +252,8 @@
     <MESSAGE value="added minimax test" />
     <MESSAGE value="added chr.utils module" />
     <MESSAGE value="added chr.core module" />
-    <option name="LAST_COMMIT_MESSAGE" value="added chr.core module" />
+    <MESSAGE value="added README.md" />
+    <option name="LAST_COMMIT_MESSAGE" value="added README.md" />
   </component>
   <component name="WindowStateProjectService">
     <state x="418" y="212" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1596448612254">
