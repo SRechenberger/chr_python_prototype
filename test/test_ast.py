@@ -45,7 +45,7 @@ def test_program_processing():
         )
     ])
 
-    result, _ = program.get_normal_form().omega_r()
+    result = program.get_normal_form().omega_r()
 
     print(result)
 

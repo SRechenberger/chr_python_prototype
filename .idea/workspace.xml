@@ -26,14 +26,29 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/chr/core.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/chr/core/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/old_compiler.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/chr/ast.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/ast.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/chr/compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/compiler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/chr/utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_ast.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_ast.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/test_compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_compiler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_parser.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/test_runtime.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_runtime.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_files/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/test_files/__init__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -51,6 +66,13 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="settings.editor.selected.configurable" value="editor.preferences.fonts.default" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/chr" />
+      <recent name="$PROJECT_DIR$/chr/core" />
+      <recent name="$PROJECT_DIR$" />
+    </key>
   </component>
   <component name="RunManager">
     <configuration name="pytest in test" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
@@ -156,7 +178,35 @@
       <option name="project" value="LOCAL" />
       <updated>1596745464199</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="new test">
+      <created>1596791571086</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1596791571087</updated>
+    </task>
+    <task id="LOCAL-00012" summary="new test">
+      <created>1596791584935</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1596791584935</updated>
+    </task>
+    <task id="LOCAL-00013" summary="added minimax test">
+      <created>1596791605370</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1596791605370</updated>
+    </task>
+    <task id="LOCAL-00014" summary="added chr.utils module">
+      <created>1596792620773</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1596792620773</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -189,7 +239,10 @@
     <MESSAGE value="Fixed 'compile_term'" />
     <MESSAGE value="Reworked compiler" />
     <MESSAGE value=".chr files in test_files will now be compiled automatically" />
-    <option name="LAST_COMMIT_MESSAGE" value=".chr files in test_files will now be compiled automatically" />
+    <MESSAGE value="new test" />
+    <MESSAGE value="added minimax test" />
+    <MESSAGE value="added chr.utils module" />
+    <option name="LAST_COMMIT_MESSAGE" value="added chr.utils module" />
   </component>
   <component name="WindowStateProjectService">
     <state x="418" y="212" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1596448612254">
@@ -204,22 +257,26 @@
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
     <state x="961" y="764" width="628" height="404" key="#com.intellij.fileTypes.FileTypeChooser/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550147129" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.bottom" timestamp="1596790917520">
+    <state x="1013" y="714" width="524" height="503" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1596795383355">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596790917520" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.center" timestamp="1596790917520">
+    <state x="1013" y="714" width="524" height="503" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596795383355" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.bottom" timestamp="1596795472820">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596790917520" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.left" timestamp="1596790917520">
+    <state width="1080" height="1864" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596795472820" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.center" timestamp="1596795472820">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596790917520" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.right" timestamp="1596790917520">
+    <state width="1080" height="1864" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596795472820" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.left" timestamp="1596795472820">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596790917520" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596795472820" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.right" timestamp="1596795472820">
+      <screen x="0" y="261" width="2560" height="1412" />
+    </state>
+    <state width="1080" height="1864" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596795472820" />
     <state x="588" y="477" key="SettingsEditor" timestamp="1596543784361">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
@@ -233,9 +290,9 @@
       <screen x="2560" y="0" width="1080" height="1920" />
     </state>
     <state x="2560" y="0" width="1080" height="1014" maximized="true" key="dock-window-1/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596726752195" />
-    <state x="943" y="583" width="672" height="678" key="search.everywhere.popup" timestamp="1596563678496">
+    <state x="943" y="583" width="672" height="678" key="search.everywhere.popup" timestamp="1596791932935">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state x="943" y="583" width="672" height="678" key="search.everywhere.popup/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596563678496" />
+    <state x="943" y="583" width="672" height="678" key="search.everywhere.popup/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596791932934" />
   </component>
 </project>

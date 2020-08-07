@@ -2,7 +2,6 @@ import ast
 from typing import List, Dict, Any, Tuple, Set, Union, Callable
 
 from ast_decompiler import decompile
-from pprintast import pprintast
 
 from chr.ast import *
 from chr.parser import chr_parse
@@ -1245,17 +1244,25 @@ def compile_omega_r_program(solver_class_name: str, program: Program) -> ast.Mod
     ])
 
 
-def chr_compile(source: str, target_file: str = None) -> str:
-    chr_ast, _ = chr_parse(source).get_normal_form().omega_r()
+def chr_compile_source(source: str, verbose: bool = False) -> str:
+    """
+    Compiles CHR source code into python source code
+    :param source: CHR program as a string
+    :param verbose: Gives some extra output if set to True.
+    :return: Generated Python code
+    """
+    if verbose:
+        print("Parsing and transforming...", end=" ")
+    chr_ast = chr_parse(source).get_normal_form().omega_r()
+    if verbose:
+        print("done.")
+        print("Compiling to python ast...", end=" ")
     python_ast = compile_omega_r_program(chr_ast.class_name, chr_ast)
-    try:
-        python_code = decompile(python_ast)
-    except Exception as err:
-        pprintast(python_ast)
-        raise err
-
-    if target_file:
-        with open(target_file, 'w') as f:
-            f.write(python_code)
+    if verbose:
+        print("done.")
+        print("Generating python code...", end=" ")
+    python_code = decompile(python_ast)
+    if verbose:
+        print("done.")
 
     return python_code

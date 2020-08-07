@@ -356,4 +356,4 @@ class Program:
                 body=rule.body
             ))
 
-        return Program(self.class_name, self.user_constraints, rules), symbols
+        return Program(self.class_name, self.user_constraints, rules)
