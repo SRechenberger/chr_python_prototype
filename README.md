@@ -51,12 +51,13 @@ assert result == 8
 
 # To actually extract the value from result,
 # use chr.runtime.get_value:
-
 from chr.runtime import get_value
 
 assert not isinstance(result, int)
 assert isinstance(get_value(result), int)
 ```
+
+See the `test_files` folder for more examples.
 
 
 # Usage
