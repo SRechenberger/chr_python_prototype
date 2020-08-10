@@ -101,5 +101,5 @@ compile all `*.chr` files in this folder.
 import os
 from chr.core import chr_compile_module
 
-chr_compile_module(os.path.dirname(__file__), verbose=True)
+chr_compile_module(os.path.dirname(__file__))
 ```
