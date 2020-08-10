@@ -26,15 +26,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b742f964-60e4-4040-b303-53460ac6463e" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/test_files/not_test.chr" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/ast.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/ast.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/compiler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/chr/parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/chr/parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_compiler.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_compiler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/test_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_files/error_message.chr" beforeDir="false" afterPath="$PROJECT_DIR$/test_files/error_message.chr" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_files/sum_solver.chr" beforeDir="false" afterPath="$PROJECT_DIR$/test_files/sum_solver.chr" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -303,7 +296,14 @@
       <option name="project" value="LOCAL" />
       <updated>1596812476218</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="- added support for unary builtin operators {'-', 'not'}&#10;- generalized 'true' and 'false' to Pythons 'True' and 'False' (which means some odd generated code for now)">
+      <created>1597074751867</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1597074751867</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -345,7 +345,8 @@
     <MESSAGE value="command line tool dummy file" />
     <MESSAGE value="command line tool" />
     <MESSAGE value="added side_effect test (which fails)" />
-    <option name="LAST_COMMIT_MESSAGE" value="added side_effect test (which fails)" />
+    <MESSAGE value="- added support for unary builtin operators {'-', 'not'}&#10;- generalized 'true' and 'false' to Pythons 'True' and 'False' (which means some odd generated code for now)" />
+    <option name="LAST_COMMIT_MESSAGE" value="- added support for unary builtin operators {'-', 'not'}&#10;- generalized 'true' and 'false' to Pythons 'True' and 'False' (which means some odd generated code for now)" />
   </component>
   <component name="WindowStateProjectService">
     <state x="418" y="212" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1596448612254">
@@ -360,26 +361,26 @@
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
     <state x="961" y="764" width="628" height="404" key="#com.intellij.fileTypes.FileTypeChooser/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596550147129" />
-    <state x="1013" y="714" width="524" height="503" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1597073163784">
+    <state x="1013" y="714" width="524" height="503" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1597074037903">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state x="1013" y="714" width="524" height="503" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597073163784" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.bottom" timestamp="1597073960377">
+    <state x="1013" y="714" width="524" height="503" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597074037903" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.bottom" timestamp="1597074363315">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597073960377" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.center" timestamp="1597073960377">
+    <state width="1080" height="1864" key="GridCell.Tab.0.bottom/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597074363315" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.center" timestamp="1597074363315">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597073960377" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.left" timestamp="1597073960377">
+    <state width="1080" height="1864" key="GridCell.Tab.0.center/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597074363315" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.left" timestamp="1597074363315">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597073960377" />
-    <state width="1080" height="1864" key="GridCell.Tab.0.right" timestamp="1597073960377">
+    <state width="1080" height="1864" key="GridCell.Tab.0.left/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597074363315" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.right" timestamp="1597074363315">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state width="1080" height="1864" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597073960377" />
+    <state width="1080" height="1864" key="GridCell.Tab.0.right/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597074363315" />
     <state width="2535" height="324" key="GridCell.Tab.1.bottom" timestamp="1597050313071">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
@@ -401,10 +402,10 @@
     </state>
     <state x="588" y="477" key="SettingsEditor/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596798561815" />
     <state x="441" y="189" key="SettingsEditor/0.28.1920.1052@0.28.1920.1052" timestamp="1596446906607" />
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1596812483247">
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2" timestamp="1597074758776">
       <screen x="0" y="261" width="2560" height="1412" />
     </state>
-    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1596812483247" />
+    <state x="875" y="702" width="800" height="527" key="Vcs.Push.Dialog.v2/0.261.2560.1412/2560.0.1080.1920@0.261.2560.1412" timestamp="1597074758776" />
     <state x="2560" y="0" width="1080" height="1014" maximized="true" key="dock-window-1" timestamp="1596726752195">
       <screen x="2560" y="0" width="1080" height="1920" />
     </state>

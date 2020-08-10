@@ -63,7 +63,34 @@ See the `test_files` folder for more examples.
 # Usage
 
 ## Command line tool
-_TODO_
+There is a command line tool `chr_python` to compile _CHR(Python)_ files to
+_Python_ code.
+
+Given, you have a file `my_program.chr`, you can compile it to _Python_ by
+issuing the command
+
+```shell
+chr_python my_program.chr
+```
+
+which will create the file `my_program.py`, which you can then import in
+_Python_ (see above).
+
+If you want to change the output path, you can use the `-o`, or `--outfile`
+flags:
+
+```shell
+chr_python my_program.chr -o some/funky/path/my_cool_program.py
+# or
+chr_python my_program.chr --outfile some/funky/path/my_cool_program.py
+```
+
+If you use some kind of automatic build, you may only want to compile a file, if
+it actually changes anything. In this case, you can use the `-t` or
+`--timestamp` flags, which will check the time of last modification, and only
+run the compilation, if the source file is newer than the existing output file.
+
+To get usage information, use the `-h` or `--help` flags.
 
 ## Automatic compilation
 
