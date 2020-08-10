@@ -1,0 +1,5 @@
+class SideEffectTest.
+
+constraints p/0.
+
+p <=> not print("blub").

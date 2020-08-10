@@ -5,4 +5,4 @@ constraints minimax/2, a/1.
 init @ a($X) <=> minimax($X, $X).
 min  @ minimax($X, $Y) \ minimax($A, $B) <=> $X < $A | minimax($X, $B).
 max  @ minimax($X, $Y) \ minimax($A, $B) <=> $Y > $B | minimax($A, $Y).
-cleanup @ minimax($X, $Y) \ minimax($X, $Y) <=> true.
+cleanup @ minimax($X, $Y) \ minimax($X, $Y) <=> True.

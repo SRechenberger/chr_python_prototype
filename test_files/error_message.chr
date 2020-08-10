@@ -1,5 +1,5 @@
 class ErrorTest.
 
-constraints error/1.
+constraints error/0.
 
-error($message) ==> false($message).
+error ==> False.

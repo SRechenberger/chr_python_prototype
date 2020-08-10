@@ -55,25 +55,43 @@ def token(s):
 comma = token(',')
 
 infix_term_ops = [
-    ["*", "/", "%"],
-    ["+", "-"],
-    ["==", "!=", "<=", "<", ">=", ">"],
-    ["and", "or"],
-    ["="]
+    [("-", 1)],
+    [("*", 2), ("/", 2), ("%", 2)],
+    [("+", 2), ("-", 2)],
+    [("not", 1)],
+    [("==", 2), ("!=", 2), ("<=", 2), ("<", 2), (">=", 2), (">", 2)],
+    [("and", 2), ("or", 2)],
+    [("=", 2)]
 ]
 
 
 def mk_infix_term_parser(term_parser, operators):
+    un_ops = [token(op) for op, ar in operators if ar == 1]
+    bin_ops = [token(op) for op, ar in operators if ar == 2]
+    un_op = reduce(lambda l, r: l | r, un_ops) if un_ops else None
+    bin_op = reduce(lambda l, r: l | r, bin_ops) if bin_ops else None
+
     @generate
     def fun():
+        u = None
+        if un_op:
+            u = yield un_op.optional()
         left = yield term_parser
+        if u:
+            left = Term(u, params=[left])
         chained = []
-        while True:
-            op = yield reduce(lambda l, r: l | r, map(token, operators)).optional()
-            if not op:
-                break
-            right = yield term_parser
-            chained.append((op, right))
+        if bin_op:
+            while True:
+                op = yield bin_op.optional()
+                if not op:
+                    break
+                v = None
+                if un_op:
+                    v = yield un_op.optional()
+                right = yield term_parser
+                if v:
+                    right = Term(v, params=[right])
+                chained.append((op, right))
 
         return reduce(lambda l, r: Term(r[0], params=[l, r[1]]), chained, left)
 
@@ -83,8 +101,8 @@ def mk_infix_term_parser(term_parser, operators):
 @generate
 def parse_prefix_term():
     symbol = yield lit_symbol | (token("'") >> regex("[^\n\t ']+") << token("'"))
-    br_open = yield string('(').optional()
     args = []
+    br_open = yield string('(').optional()
     if br_open:
         t = yield lit_white >> parse_term
         args.append(t)
@@ -124,13 +142,24 @@ def parse_bool():
 
 
 @generate
-def parse_list():
-    yield token('[')
-    ts = yield (parse_term << comma).many()
-    last = yield parse_term.optional()
-    yield token(']')
+def parse_empty_list():
+    yield token('[') + lit_white + token(']')
+    return []
 
-    return ts + ([last] if last else [])
+
+@generate
+def parse_non_empty_list():
+    yield token('[')
+    ts = yield (lit_white >> parse_term << comma).many()
+    t = yield parse_term.optional()
+    yield token(']')
+    return ts + ([t] if t else [])
+
+
+@generate
+def parse_list():
+    ts = yield parse_empty_list | parse_non_empty_list
+    return ts
 
 
 @generate
@@ -165,29 +194,26 @@ def parse_tuple():
 
 @generate
 def parse_atom():
-    result = yield lit_white \
-                   >> (
-                           parse_variable |
-                           parse_string |
-                           parse_integer |
-                           parse_list |
-                           parse_dict |
-                           parse_tuple |
-                           parse_bool
-                   )
+    result = yield lit_white >> (
+            parse_integer |
+            parse_bool |
+            parse_string |
+            parse_variable |
+            parse_list |
+            parse_tuple |
+            parse_dict |
+            parse_prefix_term |
+            token('(') >> parse_term << token(')')
+    )
     return result
-
 
 
 @generate
 def parse_term():
-    result = yield lit_white \
-                   >> (
-                           token('(') >> parse_term << token(')') |
-                           parse_infix_term(infix_term_ops) |
-                           parse_prefix_term |
-                           parse_atom
-                   )
+    result = yield lit_white >> (
+            parse_infix_term(infix_term_ops) |
+            parse_atom
+    )
     return result
 
 
@@ -206,8 +232,8 @@ def parse_constraints():
     c = yield lit_white >> parse_term
     args = [c]
     while True:
-        comma = yield lit_white >> string(',').optional()
-        if not comma:
+        sep = yield lit_white >> string(',').optional()
+        if not sep:
             break
 
         c1 = yield lit_white >> parse_term

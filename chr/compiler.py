@@ -420,6 +420,7 @@ def compile_term(
         known_variables: Dict[str, Expression],
 ) -> Expression:
     """Compiles a builtin term"""
+    print("compile_term(", term, ")")
 
     if isinstance(term, Var):
         if term.name not in known_variables:
@@ -594,6 +595,26 @@ def compile_is_bound(
     )
 
 
+def compile_not(
+        term: Term,
+        known_variables: Dict[str, Expression],
+        in_guard: bool = False
+) -> Statement:
+    """Compile the 'not' builtin constraint/operator"""
+    var_names = vars(term)
+    if not all(v in known_variables for v in var_names):
+        raise CHRCompilationError(f"Variables {var_names - set(known_variables.keys())} not known.")
+
+    exception_name = "CHRGuardFail" if in_guard else "CHRFalse"
+
+    term_ast = compile_term(term, known_variables)
+
+    return gen_raise_on_false(
+        gen_call(exception_name),
+        gen_not(term_ast)
+    )
+
+
 def compile_misc_builtin(
         term: Term,
         known_variables: Dict[str, Expression],
@@ -606,19 +627,17 @@ def compile_misc_builtin(
 
     exception_name = "CHRGuardFail" if in_guard else "CHRFalse"
 
-    symbol = term.symbol
-    arg_asts = [compile_term(sub_term, known_variables) for sub_term in term.params]
+    if isinstance(term, Term):
+        symbol = term.symbol
+        arg_asts = [compile_term(sub_term, known_variables) for sub_term in term.params]
+        term_ast = gen_call(gen_attribute(*symbol.split("."), *arg_asts))
+    else:
+        term_ast = compile_term(term, known_variables)
 
     return gen_raise_on_false(
         gen_call(exception_name),
-        gen_call(gen_attribute(*symbol.split(".")), *arg_asts)
+        term_ast
     )
-
-
-def compile_false(*args: Expression, in_guard: bool = False) -> Statement:
-    exception_name = "CHRGuardFail" if in_guard else "CHRFalse"
-
-    return gen_raise(gen_call(exception_name, *args))
 
 
 def compile_chr_constraint(
@@ -679,41 +698,44 @@ def compile_rule_body(
     constraints = []
 
     for body_constraint in body_constraints:
-        if f"{body_constraint.symbol}/{body_constraint.arity}" in known_chr_constraints:
-            constraints += compile_chr_constraint(name_gen, body_constraint, known_variables)
-        elif body_constraint.symbol == "=":
-            constraints.append(compile_unify(body_constraint.params[0], body_constraint.params[1], known_variables))
-            constraints.append(gen_commit())
-        elif body_constraint.symbol == "is":
-            constraints.append(
-                compile_is(body_constraint.params[0], body_constraint.params[1], known_variables)
-            )
-        elif body_constraint.symbol == "is_bound":
-            constraints.append(
-                compile_is_bound(body_constraint.params[0], known_variables)
-            )
-        elif body_constraint.symbol == "false":
-            constraints.append(
-                compile_false(*(
-                    compile_term(param, known_variables)
-                    for param in body_constraint.params
-                ))
-            )
-        elif body_constraint.symbol in BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS:
-            constraints.append(
-                compile_comparisons(
-                    body_constraint.symbol,
-                    body_constraint.params[0],
-                    body_constraint.params[1],
-                    known_variables
+        if isinstance(body_constraint, Term):
+            if f"{body_constraint.symbol}/{body_constraint.arity}" in known_chr_constraints:
+                constraints += compile_chr_constraint(name_gen, body_constraint, known_variables)
+            elif body_constraint.symbol == "=":
+                constraints.append(compile_unify(body_constraint.params[0], body_constraint.params[1], known_variables))
+                constraints.append(gen_commit())
+            elif body_constraint.symbol == "is":
+                constraints.append(
+                    compile_is(body_constraint.params[0], body_constraint.params[1], known_variables)
                 )
-            )
-        elif body_constraint.symbol == "fresh":
-            constraints.append(compile_fresh_constraint(
-                name_gen,
-                body_constraint.params[0].name,
-                known_variables
-            ))
+            elif body_constraint.symbol == "is_bound":
+                constraints.append(
+                    compile_is_bound(body_constraint.params[0], known_variables)
+                )
+            elif body_constraint.symbol in BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS:
+                constraints.append(
+                    compile_comparisons(
+                        body_constraint.symbol,
+                        body_constraint.params[0],
+                        body_constraint.params[1],
+                        known_variables
+                    )
+                )
+            elif body_constraint.symbol == "fresh":
+                constraints.append(compile_fresh_constraint(
+                    name_gen,
+                    body_constraint.params[0].name,
+                    known_variables
+                ))
+
+            elif body_constraint.symbol == "not":
+                constraints.append(
+                    compile_not(body_constraint.params[0], known_variables)
+                )
+            else:
+                constraints.append(
+                    compile_misc_builtin(body_constraint, known_variables)
+                )
         else:
             constraints.append(
                 compile_misc_builtin(body_constraint, known_variables)
@@ -740,7 +762,6 @@ def compile_match(
         known_vars: Dict[str, Expression]
 ) -> List[Expression]:
     conditions = []
-
 
     if not isinstance(pattern, Var):
         conditions.append(gen_type_check(value_ast, pattern))
@@ -802,8 +823,8 @@ def compile_guard_constraint(
     if symbol == "is_bound":
         return compile_is_bound(params[0], known_variables, in_guard=True)
 
-    if symbol == "false":
-        return compile_false(in_guard=True)
+    if symbol == "not":
+        return compile_not(params[0], known_variables, in_guard=True)
 
     if symbol in BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS:
         return compile_comparisons(symbol, params[0], params[1], known_variables, in_guard=True)
@@ -922,7 +943,6 @@ def compile_match_loops(
 
     next_vars = set().union(*(vars(c) for c in next_constraints))
 
-
     for matching in matchings:
         if (
                 vars(matching.params[0]).issubset(set(known_variables.keys())) and
@@ -987,7 +1007,6 @@ def compile_occurrence(
         occurrence_scheme: OccurrenceScheme,
         known_chr_constraints: Set[str]
 ) -> Tuple[str, int, Statement]:
-
     _, head = occurrence_scheme.occurring_constraint
     known_variables = {
         v: gen_name(v) for v in head.params
@@ -1005,7 +1024,6 @@ def compile_occurrence(
     future_matchings = []
 
     next_vars = set().union(*(vars(c) for c in occurrence_scheme.other_constraints))
-
 
     for matching in occurrence_scheme.matching:
         if (

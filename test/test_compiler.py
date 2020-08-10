@@ -83,10 +83,8 @@ def test_error_message():
 
     solver = ErrorTest()
 
-    message = "this is an error message!"
-
-    with pytest.raises(CHRFalse, match=message):
-        solver.error(message)
+    with pytest.raises(CHRFalse):
+        solver.error()
 
 
 def test_leq_solver():
@@ -150,7 +148,6 @@ def test_match():
 
 def test_gcd():
     from test_files.gcd_solver import GCDSolver
-
 
     solver = GCDSolver()
 
@@ -241,3 +238,17 @@ def test_side_effect():
     solver = SideEffectTest()
 
     solver.p()
+
+
+def test_not():
+    from test_files.not_test import NotTest
+
+    solver = NotTest()
+
+    solver.a()
+
+    assert not solver.dump_chr_store()
+
+    solver.b()
+
+    assert solver.dump_chr_store()

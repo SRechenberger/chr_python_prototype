@@ -3,6 +3,8 @@ from chr.parser import *
 
 def test_term():
     test_cases = [
+        ("-1", Term("-", params=[1])),
+        ("not a", Term("not", params=[Term("a")])),
         ("$A", Var("A")),
         ("$_1", Var("_1")),
         ("123", 123),
@@ -22,6 +24,7 @@ def test_term():
         ("(1,)", (1,)),
         ("(1,2,3, [1,2,3])", (1, 2, 3, [1, 2, 3])),
         ("1 + 2", Term("+", params=[1, 2])),
+        ("(1 + 2) + 3", Term("+", params=[Term("+", params=[1, 2]), 3])),
         ("1 + 2 == 3 * 4", Term("==",
                                 params=[Term("+", params=[1, 2]), Term("*", params=[3, 4])])
          ),
@@ -30,7 +33,14 @@ def test_term():
                                           1,
                                           Term("+", params=[3, 4])
                                       ]), False]
-                                      ))
+                                      )),
+        ("not 1", Term("not", params=[1])),
+        ("not 1 or not 2", Term("or",
+                                params=[
+                                    Term("not", params=[1]),
+                                    Term("not", params=[2])
+                                ]
+                                ))
     ]
 
     for input, expected_output in test_cases:
@@ -63,7 +73,9 @@ def test_constraint():
 def test_constraints():
     test_cases = [
         ("c1", [Term("c1")]),
-        ("c1, c2, c3", [Term(f'c{i}') for i in range(1, 4)])
+        ("c1, c2, c3", [Term(f'c{i}') for i in range(1, 4)]),
+        ("not c", [Term("not", params=[Term("c")])]),
+        ("not c1, not c2", [Term("not", params=[Term("c1")]), Term("not", params=[Term("c2")])])
     ]
     for input, expected_output in test_cases:
         print("input", input, "expected", expected_output)

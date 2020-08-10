@@ -1,0 +1,6 @@
+class NotTest.
+
+constraints a/0, b/0.
+
+a <=> not False | True.
+b <=> not (not False) | True.

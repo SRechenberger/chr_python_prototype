@@ -2,8 +2,8 @@ class GCDSolver.
 
 constraints gcd/1.
 
-error @ gcd($_0) <=> is_bound($_0), $_0 < 0 | false("Number < Zero").
-cleanup_zero @ gcd($_0) <=> $_0 == 0 | true.
+error @ gcd($_0) <=> is_bound($_0), $_0 < 0 | False.
+cleanup_zero @ gcd($_0) <=> $_0 == 0 | True.
 compute @ gcd($_0) \ gcd($_1) <=>
         is_bound($_0), is_bound($_1), $_0 <= $_1 |
     fresh($_2),

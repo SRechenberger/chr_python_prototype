@@ -177,7 +177,7 @@ class Rule:
             normal_removed,
             matching,
             self.guard,
-            [c for c in self.body if c.symbol != "true"]
+            self.body
         )
 
 

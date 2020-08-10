@@ -2,6 +2,6 @@ class SumSolver.
 
 constraints sum/1, read/1.
 
-sum(0) <=> true.
+sum(0) <=> True.
 sum($N), sum($M) <=> sum($N + $M).
 sum($N) \ read($M) <=> $N = $M.
