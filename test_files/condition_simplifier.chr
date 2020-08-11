@@ -1,0 +1,92 @@
+class ConditionSimplifier.
+
+constraints simplify/2, node/3, node/2, flatten/2, rebuild/2.
+
+start @
+simplify($Term, $Out) <=> fresh($RootId), flatten($RootId, $Term), rebuild($RootId, $Out).
+
+rebuild_if @
+rebuild($Id, $Out),
+node("if", $Id, {"condition": $CondId, "then": $ThenId, "else": $ElseId}) <=>
+    fresh($OutCond), rebuild($CondId, $OutCond),
+    fresh($OutThen), rebuild($ThenId, $OutThen),
+    fresh($OutElse), rebuild($ElseId, $OutElse),
+    $Out = ("if", $OutCond, $OutThen, $OutElse).
+
+rebuild_not @
+rebuild($Id, $Out),
+node("not", $Id, {"term": $TermId}) <=>
+    fresh($OutTerm), rebuild($TermId, $OutTerm),
+    $Out = ("not", $OutTerm).
+
+rebuild_true @
+rebuild($Id, $Out),
+node("True", $Id) <=>
+    $Out = "True".
+
+rebuild_false @
+rebuild($Id, $Out),
+node("False", $Id) <=>
+    $Out = "False".
+
+rebuild_default @
+rebuild($Id, $Out),
+node("unchanged", $Id, $Node) <=>
+    $Out = $Node.
+
+flatten_if @
+flatten($RootId, ("if", $Cond, $Then, $Else)) <=>
+    fresh($CondId), fresh($ThenId), fresh($ElseId),
+    node("if", $RootId, {"condition": $CondId, "then": $ThenId, "else": $ElseId}),
+    flatten($CondId, $Cond),
+    flatten($ThenId, $Then),
+    flatten($ElseId, $Else).
+
+flatten_not @
+flatten($RootId, ("not", $Term)) <=>
+    fresh($TermId),
+    node("not", $RootId, {"term": $TermId}),
+    flatten($TermId, $Term).
+
+flatten_true @
+flatten($RootId, "True") <=>
+    node("True", $RootId).
+
+flatten_false @
+flatten($RootId, "False") <=>
+    node("False", $RootId).
+
+flatten_default @
+flatten($RootId, $Node) <=>
+    node("unchanged", $RootId, $Node).
+
+reduce_double_negation @
+node("not", $RootId, {"term": $NextNotId}),
+node("not", $NextNotId, {"term": $TermId}),
+node($TermType, $TermId, $Subnodes) <=>
+    node($TermType, $RootId, $Subnodes).
+
+reduce_negated_true @
+node("not", $Id, {"term": $TermId}),
+node("True", $TermId) <=>
+    node("False", $Id).
+
+reduce_negated_false @
+node("not", $Id, {"term": $TermId}),
+node("False", $TermId) <=>
+    node("True", $Id).
+
+reduce_true @
+node("if", $Id, {"condition": $CondId, "then": $ThenId, "else": $ElseId}),
+node("True", $CondId),
+node($NodeType, $ThenId, $SubNodes),
+node($NodeTypeElse, $ElseId, $SubNodesElse) <=>
+    node($NodeType, $Id, $SubNodes).
+
+reduce_false @
+node("if", $Id, {"condition": $CondId, "then": $ThenId, "else": $ElseId}),
+node("False", $CondId),
+node($NodeType, $ElseId, $SubNodes),
+node($NodeTypeThen, $ThenId, $SubNodesThen) <=>
+    node($NodeType, $Id, $SubNodes).
+

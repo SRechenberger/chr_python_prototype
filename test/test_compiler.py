@@ -253,3 +253,83 @@ def test_not():
     solver.b()
 
     assert solver.dump_chr_store()
+
+
+def test_typecheck():
+    from test_files.typechecks import TypeCheck
+    solver = TypeCheck()
+    solver.is_int(1)
+    assert not solver.dump_chr_store()
+
+    solver.is_string("blub")
+    assert not solver.dump_chr_store()
+
+    solver.is_int("blub")
+    assert len(solver.dump_chr_store()) == 1
+
+    solver.is_string(1)
+    assert len(solver.dump_chr_store()) == 2
+
+    v = solver.fresh_var()
+    solver.is_int(v)
+    assert len(solver.dump_chr_store()) == 3
+
+
+def test_condition_simplifier():
+    from test_files.condition_simplifier import ConditionSimplifier
+
+    solver = ConditionSimplifier()
+    solver.node("if", 0, {'condition': 1, 'then': 2, 'else': 3})
+    solver.node("False", 1)
+    solver.node("unchanged", 2, ('raise', 'CHRFalse'))
+    solver.node("unchanged", 3, 'pass')
+
+    dump = solver.dump_chr_store()
+    assert ("node/3", "unchanged", 0, "pass") in dump
+
+    solver = ConditionSimplifier()
+
+    test_ast = (
+        "if",
+        ("not", "True"),
+        ("raise", "CHRFalse"),
+        "pass"
+    )
+
+    output = solver.fresh_var()
+    solver.simplify(test_ast, output)
+
+    assert output == "pass"
+    assert not solver.dump_chr_store()
+
+    output = solver.fresh_var()
+    test_ast2 = (
+        "if",
+        ("not", ("not", "True")),
+        ("raise", "CHRFalse"),
+        "pass"
+    )
+    solver.simplify(test_ast2, output)
+
+    assert output == ("raise", "CHRFalse")
+    assert not solver.dump_chr_store()
+
+    test_ast3 = (
+        "if",
+        ("not", ("not", ("<=", "a", "b"))),
+        ("if", ("not", "True"),
+         "pass",
+         ("=", "a", 1)),
+        ("=", "a", 3)
+    )
+
+    test_expected = (
+        "if",
+        ("<=", "a", "b"),
+        ("=", "a", 1),
+        ("=", "a", 3)
+    )
+
+    output = solver.fresh_var()
+    solver.simplify(test_ast3, output)
+    assert output == test_expected

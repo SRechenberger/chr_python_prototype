@@ -33,7 +33,7 @@ lit_symbol = regex(r'[a-z][a-zA-Z0-9_]*')
 lit_operator = regex(r'\'[^\t\n\r ]+\'')
 lit_variable = regex(r'[a-zA-Z_][a-zA-Z0-9_]*')
 lit_number = regex(r'[0-9]+')
-lit_string = regex(r'\".*\"')
+lit_string = regex(r'\"[^\"]*\"')
 lit_white = regex(r'[\n\t ]*')
 lit_signature = regex(r'[a-z][a-zA-Z0-9_-]*/[0-9]+')
 lit_class_name = regex(r'[A-Za-z_][A-Za-z_0-9]*')
@@ -59,7 +59,7 @@ infix_term_ops = [
     [("*", 2), ("/", 2), ("%", 2)],
     [("+", 2), ("-", 2)],
     [("not", 1)],
-    [("==", 2), ("!=", 2), ("<=", 2), ("<", 2), (">=", 2), (">", 2)],
+    [("is", 2), ("==", 2), ("!=", 2), ("<=", 2), ("<", 2), (">=", 2), (">", 2)],
     [("and", 2), ("or", 2)],
     [("=", 2)]
 ]

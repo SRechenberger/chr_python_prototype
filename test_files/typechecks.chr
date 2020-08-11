@@ -1,0 +1,6 @@
+class TypeCheck.
+
+constraints is_int/1, is_string/1.
+
+is_int($I) <=> is_bound($I), type($I) is int | True.
+is_string($S) <=> is_bound($S), type($S) is str | True.

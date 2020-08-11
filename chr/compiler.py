@@ -2,6 +2,7 @@ import ast
 from typing import List, Dict, Any, Tuple, Set, Union, Callable
 
 from ast_decompiler import decompile
+from pprintast import pprintast
 
 from chr.ast import *
 from chr.parser import chr_parse
@@ -56,6 +57,23 @@ CmpOp = Union[
     ast.Lt, ast.LtE, ast.Gt, ast.GtE,
     ast.Is, ast.IsNot, ast.In, ast.NotIn
 ]
+
+BUILTIN_TYPES = {
+    "int",
+    "str",
+    "bool",
+    "dict",
+    "set",
+    "list",
+    "tuple",
+    "range",
+    "float",
+    "complex",
+    "frozenset",
+    "bytes",
+    "bytearray",
+    "memoryview"
+}
 
 
 class CHRCompilationError(RuntimeError):
@@ -221,8 +239,10 @@ def gen_tuple(*elts: Expression) -> Expression:
     return ast.Tuple(elts=list(elts))
 
 
-def gen_dict(**pairs: Dict[Expression, Expression]) -> Expression:
-    return ast.Dict(*zip(**pairs))
+def gen_dict(pairs: Dict[Expression, Expression]) -> Expression:
+    keys = list(pairs.keys())
+    values = list(pairs.values())
+    return ast.Dict(keys=list(keys), values=list(values))
 
 
 def gen_constant(constant: Any) -> Expression:
@@ -429,8 +449,8 @@ def compile_term(
         return gen_call("get_value", known_variables[term.name])
 
     if isinstance(term, dict):
-        return gen_dict(**{
-            key: compile_term(sub_term, known_variables)
+        return gen_dict({
+            compile_term(key, known_variables): compile_term(sub_term, known_variables)
             for key, sub_term in term.items()
         })
 
@@ -454,6 +474,9 @@ def compile_term(
                 compile_term(term.params[0], known_variables),
                 compile_term(term.params[1], known_variables)
             )
+
+        if term.symbol in BUILTIN_TYPES and not term.params:
+            return gen_name(term.symbol)
 
         return gen_call(
             gen_attribute(*term.symbol.split(".")),
@@ -526,7 +549,7 @@ def compile_is(
             raise ...
     """
 
-    var_names = vars(lhs) + vars(rhs)
+    var_names = vars(lhs).union(vars(rhs))
     if not all(v in known_variables for v in var_names):
         raise CHRCompilationError(f"Variables {var_names - set(known_variables.keys())} not known.")
 
@@ -1075,19 +1098,16 @@ def compile_occurrence(
     )
 
 
-def compile_activate_procedure(symbol: str, arity: int, occurrences: int) -> Statement:
+def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.FunctionDef]) -> Statement:
     proc_name: str = f"__activate_{symbol}_{arity}"
-    occurrence_proc_names = [
-        f"__{symbol}_{arity}_{i}"
-        for i in range(0, occurrences)
-    ]
+
     occurrence_calls: List[Expression] = [
         gen_call(
-            gen_attribute(gen_self(), proc_name),
+            gen_attribute(gen_self(), proc.name),
             gen_name("index"),
             gen_starred(gen_name("args"))
         )
-        for proc_name in occurrence_proc_names
+        for proc in occurrences
     ]
 
     occurrence_tries: List[Statement] = [
@@ -1192,7 +1212,7 @@ def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
 def compile_omega_r_program(solver_class_name: str, program: Program) -> ast.Module:
     known_chr_constraints = set(program.user_constraints)
 
-    occurrences = {
+    occurrences: Dict[Tuple[str, int], List[ast.FunctionDef]] = {
         (symbol, int(arity)): []
         for symbol, arity in map(lambda x: x.split('/'), known_chr_constraints)
     }
@@ -1203,7 +1223,7 @@ def compile_omega_r_program(solver_class_name: str, program: Program) -> ast.Mod
     }
 
     for rule in program.rules:
-        definitions: List[Tuple[str, int, Any]] = [
+        definitions: List[Tuple[str, int, ast.FunctionDef]] = [
             compile_occurrence(occurrence_scheme, known_chr_constraints)
             for occurrence_scheme in rule.get_occurrence_schemes()
         ]
@@ -1220,7 +1240,7 @@ def compile_omega_r_program(solver_class_name: str, program: Program) -> ast.Mod
                 constraints[symbol] = {arity}
 
     activation_procedures = [
-        compile_activate_procedure(symbol, arity, len(occurrences[symbol, arity]))
+        compile_activate_procedure(symbol, arity, occurrences[symbol, arity])
         for (symbol, arity), procedures in occurrences.items()
     ]
 
@@ -1277,6 +1297,7 @@ def chr_compile_source(source: str, verbose: bool = False) -> str:
         print("done.")
         print("Compiling to python ast...", end=" ")
     python_ast = compile_omega_r_program(chr_ast.class_name, chr_ast)
+    # pprintast(python_ast)
     if verbose:
         print("done.")
         print("Generating python code...", end=" ")

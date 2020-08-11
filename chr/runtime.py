@@ -39,6 +39,7 @@ class CHRStore:
         return id
 
     def add_to_history(self, rule_name, *ids):
+        print("FIRE:", rule_name, *ids)
         ids_set = set(ids)
         if rule_name in self.history:
             self.history[rule_name].append(ids_set)
@@ -304,10 +305,11 @@ class BuiltInStore:
     def delay(self, delayed_call, *variables):
         id = self.next_delay_id
         for var in variables:
-            if var.name in self.delays:
-                self.delays[var.name].append((id, delayed_call))
-            else:
-                self.delays[var.name] = [(id, delayed_call)]
+            if isinstance(var, LogicVariable):
+                if var.name in self.delays:
+                    self.delays[var.name].append((id, delayed_call))
+                else:
+                    self.delays[var.name] = [(id, delayed_call)]
 
         self.next_delay_id += 1
 
