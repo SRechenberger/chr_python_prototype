@@ -3,7 +3,7 @@ from random import sample
 
 import pytest
 
-from chr.runtime import CHRFalse
+from chr.runtime import CHRFalse, UndefinedConstraintError
 
 
 def test_sum_solver():
@@ -333,3 +333,6 @@ def test_condition_simplifier():
     output = solver.fresh_var()
     solver.simplify(test_ast3, output)
     assert output == test_expected
+
+    with pytest.raises(UndefinedConstraintError):
+        solver.simplify(test_ast3)

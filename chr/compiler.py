@@ -1169,33 +1169,43 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
 
 def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
     arity_checks: List[Statement] = [gen_pass()]
-    if arities:
-        arity_checks = [
-            gen_if(
-                gen_comparison(
-                    "==",
-                    gen_call("len", gen_name("args")),
-                    gen_constant(arity)
-                ),
-                gen_assign(
-                    [gen_name("new_id")],
-                    gen_call(gen_attribute(gen_self(), "chr", "new"))
-                ),
-                gen_assign(
-                    [gen_name("new_constraint")],
-                    gen_tuple(gen_constant(f"{symbol}/{arity}"), gen_starred(gen_name("args")))
-                ),
-                gen_insert_call("new_constraint", "new_id"),
-                gen_return(
-                    gen_call(
-                        gen_attribute(gen_self(), f"__activate_{symbol}_{arity}"),
-                        gen_name("new_id"),
-                        gen_starred(gen_name("args"))
-                    )
+    if not arities:
+        raise CHRCompilationError(f"symbol {symbol} hast no valid arities")
+
+    arity_checks = [
+        gen_if(
+            gen_comparison(
+                "==",
+                gen_call("len", gen_name("args")),
+                gen_constant(arity)
+            ),
+            gen_assign(
+                [gen_name("new_id")],
+                gen_call(gen_attribute(gen_self(), "chr", "new"))
+            ),
+            gen_assign(
+                [gen_name("new_constraint")],
+                gen_tuple(gen_constant(f"{symbol}/{arity}"), gen_starred(gen_name("args")))
+            ),
+            gen_insert_call("new_constraint", "new_id"),
+            gen_return(
+                gen_call(
+                    gen_attribute(gen_self(), f"__activate_{symbol}_{arity}"),
+                    gen_name("new_id"),
+                    gen_starred(gen_name("args"))
                 )
             )
-            for arity in arities
-        ]
+        )
+        for arity in arities
+    ]
+
+    wrong_arity_default = gen_raise(
+        gen_call(
+            "UndefinedConstraintError",
+            gen_constant(f"Unknown symbol: {symbol}/"),
+            gen_call("len", gen_name("args"))
+        )
+    )
 
     return gen_func_def(
         symbol,
@@ -1205,7 +1215,8 @@ def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
             defaults=[],
             kwarg=None,
         ),
-        *arity_checks
+        *arity_checks,
+        wrong_arity_default
     )
 
 
@@ -1262,6 +1273,7 @@ def compile_omega_r_program(solver_class_name: str, program: Program) -> ast.Mod
                 ast.alias(name="LogicVariable", asname=None),
                 ast.alias(name="CHRSolver", asname=None),
                 ast.alias(name="CHRFalse", asname=None),
+                ast.alias(name="UndefinedConstraintError", asname=None),
                 ast.alias(name="CHRGuardFail", asname=None),
                 ast.alias(name="get_value", asname=None),
                 ast.alias(name="is_bound", asname=None),
