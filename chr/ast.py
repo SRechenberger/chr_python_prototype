@@ -284,7 +284,6 @@ class ProcessedRule:
         else:
             rule += "true"
 
-
         return rule
 
     def __repr__(self):

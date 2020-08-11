@@ -1,8 +1,9 @@
+from math import inf
+from random import sample
+
 import pytest
 
 from chr.runtime import CHRFalse
-from random import sample
-from math import inf
 
 
 def test_sum_solver():
