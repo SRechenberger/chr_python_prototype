@@ -1,3 +1,6 @@
+from typing import Any, Union
+
+
 class UndefinedConstraintError(Exception):
     def __init__(self, symbol, arity):
         self.signature = f'{symbol}/{arity}'
@@ -166,183 +169,46 @@ def is_bound(v):
     return True
 
 
-class LogicVariable:
-    def __init__(self, name, store, value=None):
-        self.value = value
-        self.name = name
-        self.store = store
-
-    def occurs_check(self, term):
-        if self is term:
-            return False
-
-        if type(term) in [list, tuple]:
-            return self in term \
-                   or any(self.occurs_check(subterm) for subterm in term)
-
-        if type(term) is dict:
-            return self in term.values() \
-                   or any(self.occurs_check(subterm) for subterm in term.values())
-
-        return False
-
-    def unset(self):
-        self.value = None
-
-    def __getitem__(self, key):
-        return self.get_value()[key]
-
-    def set_value(self, value):
-        if self.occurs_check(value):
-            raise Exception(f'{self} occurs in {value}')
-
-        if self.is_bound():
-            return False
-
-        if self.value is None:
-            self.value = value
-            self.store.trail.append(self)
-            return True
-
-        if isinstance(self.value, LogicVariable):
-            return self.value.set_value(value)
-
-        return False
-
-    def get_value(self):
-
-        if isinstance(self.value, LogicVariable):
-            return self.value.get_value()
-
-        if self.value is None:
-            return None
-
-        if type(self.value) is list:
-            return [
-                term.get_value() if isinstance(term, LogicVariable) else term
-                for term in self.value
-            ]
-
-        if type(self.value) is tuple:
-            return tuple(
-                term.get_value() if isinstance(term, LogicVariable) else term
-                for term in self.value
-            )
-
-        if type(self.value) is dict:
-            return {
-                key: term.get_value() if isinstance(term, LogicVariable) else term
-                for key, term in self.value.items()
-            }
-
-        return self.value
-
-    def find_repr(self):
-        if isinstance(self.value, LogicVariable):
-            return self.value.find_repr()
-
-        return self
-
-    def is_bound(self):
-
-        if isinstance(self.value, LogicVariable):
-            return self.value.is_bound()
-
-        if self.value is None:
-            return False
-
-        return True
-
-    def __str__(self):
-        if self.is_bound():
-            return str(self.value)
-
-        return self.name
-
-    def __repr__(self):
-        return str(self)
-
-    def __eq__(self, other):
-        if self is other:
-            return True
-
-        if isinstance(other, LogicVariable):
-            return self.find_repr() is other.find_repr()
-
-        if self.is_bound():
-            return self.get_value() == other
-
-        return False
-
-
 class BuiltInStore:
-
     def __init__(self):
-        self.vars = {}
-        self.next_fresh_var = 0
-        self.trail = []
-        self.next_delay_id = 0
-        self.delays = {}
-        self.successfully_called_delays = set()
+        self.union_find = []
+        self.value_bindings = {}
+        self.next_variable_index = 0
 
-    def fresh(self, name=None, value=None):
-        if name and name.startswith("_"):
-            raise Exception("user variables must not begin with '_'")
+    def fresh(self, name: Union[None, str] = None, value: Union[None, Any] = None) -> LogicVariable:
+        assert len(self.union_find) == self.next_variable_index
 
-        if name:
-            if name in self.vars:
-                var_name = f'_{name}{self.next_fresh_var}'
-                self.next_fresh_var += 1
-            else:
-                var_name = name
+        variable_index = self.next_variable_index
+        self.next_variable_index += 1
+        variable_name = name
+        if not variable_name:
+            variable_name = f"_V{variable_index}"
 
-        else:
-            var_name = f'_VAR{self.next_fresh_var}'
-            self.next_fresh_var += 1
+        self.union_find.append(variable_index)
 
-        return LogicVariable(var_name, self, value=value)
+        if value:
+            self.value_bindings[variable_index] = value
 
-    def delay(self, delayed_call, *variables):
-        id = self.next_delay_id
-        for var in variables:
-            if isinstance(var, LogicVariable):
-                if var.name in self.delays:
-                    self.delays[var.name].append((id, delayed_call))
-                else:
-                    self.delays[var.name] = [(id, delayed_call)]
+        return LogicVariable(variable_index, variable_name, self)
 
-        self.next_delay_id += 1
+    def find(self, index: int) -> int:
+        r = index
+        while r != self.union_find[r]:
+            r = self.union_find[r]
 
-    def ask_eq(self, x, y):
-        return x == y
+        return r
 
-    def tell_eq(self, x, y):
-        return unify(x, y)
+    def union(self, a: int, b: int):
+        r_a = self.find(a)
+        r_b = self.find(b)
 
-    def commit(self):
-        trail = self.trail
-        self.trail = []
-        for var in trail:
-            if var.name in self.delays:
-                for index, f in self.delays[var.name]:
-                    if index not in self.successfully_called_delays:
-                        if f():
-                            self.successfully_called_delays.add(index)
+        if r_a != r_b:
+            self.union_find[r_a] = r_b
 
-        # Cleanup
-        for index in self.successfully_called_delays:
-            for v, ds in self.delays.items():
-                self.delays[v] = [
-                    (id1, f)
-                    for (id1, f) in ds
-                    if id1 != index
-                ]
 
-    def backtrack(self):
-        for var in self.trail:
-            var.unset()
 
-        self.trail = []
+class LogicVariable:
+    def __init__(self, index: int, name: str, store: BuiltInStore):
 
 
 class CHRSolver:
