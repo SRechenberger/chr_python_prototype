@@ -338,3 +338,8 @@ def test_condition_simplifier():
 
     with pytest.raises(UndefinedConstraintError):
         solver.simplify(test_ast3)
+
+def test_or():
+    from test_files.or_test import OrTest
+
+
