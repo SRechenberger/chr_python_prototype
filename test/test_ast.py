@@ -47,7 +47,5 @@ def test_program_processing():
 
     result = program.get_normal_form().omega_r()
 
-    print(result)
-
     for rule_result, rule_expected in zip(result.rules, processed.rules):
         assert rule_result == rule_expected

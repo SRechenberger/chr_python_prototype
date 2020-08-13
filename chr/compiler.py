@@ -2,7 +2,6 @@ import ast
 from typing import List, Dict, Any, Tuple, Set, Union, Callable
 
 from ast_decompiler import decompile
-from pprintast import pprintast
 
 from chr.ast import *
 from chr.parser import chr_parse
@@ -372,11 +371,11 @@ def gen_expr(expr_ast: Expression) -> Statement:
 
 
 def gen_commit() -> Statement:
-    return gen_expr(gen_call(gen_attribute(gen_self(), "builtin", "commit")))
+    return gen_expr(gen_call(gen_attribute(gen_self(), "builtin", "commit_recent_bindings")))
 
 
 def gen_backtrack() -> Statement:
-    return gen_expr(gen_call(gen_attribute(gen_self(), "builtin", "backtrack")))
+    return gen_expr(gen_call(gen_attribute(gen_self(), "builtin", "reset_recent_bindings")))
 
 
 def gen_guard_try_catch(*body: Statement) -> Statement:
@@ -440,7 +439,6 @@ def compile_term(
         known_variables: Dict[str, Expression],
 ) -> Expression:
     """Compiles a builtin term"""
-    print("compile_term(", term, ")")
 
     if isinstance(term, Var):
         if term.name not in known_variables:
