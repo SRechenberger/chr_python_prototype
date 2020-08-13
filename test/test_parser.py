@@ -46,9 +46,7 @@ def test_term():
     ]
 
     for input, expected_output in test_cases:
-        print("input", input, "expected", expected_output)
         result = parse_term.parse(input)
-        print("result", result)
         assert result == expected_output
 
 
@@ -80,9 +78,7 @@ def test_constraints():
         ("not c1, not c2", [Term("not", params=[Term("c1")]), Term("not", params=[Term("c2")])])
     ]
     for input, expected_output in test_cases:
-        print("input", input, "expected", expected_output)
         result = parse_constraints.parse(input)
-        print("result", result)
         assert result == expected_output
 
 
@@ -107,7 +103,6 @@ def test_guard_body():
     ]
 
     for input_string, expected_output in test_cases:
-        print("input", input_string, "expected", expected_output)
         assert parse_body.parse(input_string) == expected_output
 
 
@@ -165,9 +160,5 @@ program = Program(class_name="GCDSolver", user_constraints=["gcd/1"], rules=[
 
 def test_parse_program():
     result = parse_program().parse(program_code)
-    print("result:\n", result)
-    print("expected:\n", program)
     assert result == program
-    print("result:\n", result.get_normal_form())
-    print("expected:\n", result.get_normal_form())
     assert result.get_normal_form() == program.get_normal_form()

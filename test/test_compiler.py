@@ -3,7 +3,7 @@ from random import sample
 
 import pytest
 
-from chr.runtime import CHRFalse, UndefinedConstraintError
+from chr.runtime import CHRFalse, UndefinedConstraintError, unify
 
 
 def test_sum_solver():
@@ -56,10 +56,13 @@ def test_eq_solver():
     c = solver.fresh_var("c")
 
     solver.eq(a, b)
+    assert a == b
+    assert not solver.dump_chr_store()
     solver.eq(c, b)
+    assert c == b
+    assert c == a
 
     dump = solver.dump_chr_store()
-    print(dump)
     assert len(dump) == 0
 
     solver.eq(a, 1)
@@ -109,7 +112,6 @@ def test_leq_solver():
 
     solver.leq(z, x)
     dump = solver.dump_chr_store()
-    print(dump)
     assert len(dump) == 1
     assert ('leq/2', x, y) in dump
     assert ('leq/2', z, y) in dump
@@ -166,10 +168,10 @@ def test_gcd():
     solver.gcd(x)
     dump = solver.dump_chr_store()
     assert len(dump) == 2
-    solver.builtin.tell_eq(x, 3)
-    solver.builtin.commit()
+    unify(x, 3)
+    assert x == 3
+    solver.builtin.commit_recent_bindings()
     dump = solver.dump_chr_store()
-    print("DUMP:", dump)
     assert len(dump) == 1
     assert ("gcd/1", 1) in dump
 

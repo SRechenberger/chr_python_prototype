@@ -75,7 +75,8 @@ def test_unify_cycle():
     rt.unify(a, b)
     rt.unify(b, a)
 
-    assert a.value == b and b.value != a
+    assert store.find(a.index) == b.index
+    assert store.find(b.index) == b.index
 
 
 def test_ask_eq():
@@ -98,10 +99,10 @@ def test_tell_eq():
     y = store.fresh()
     z = store.fresh()
 
-    assert store.tell_eq(y, 1)
-    assert store.tell_eq(z, 2)
+    assert rt.unify(y, 1)
+    assert rt.unify(z, 2)
 
-    assert store.tell_eq(x, (y, z))
+    assert rt.unify(x, (y, z))
 
     assert x == (1, 2)
 
@@ -123,5 +124,5 @@ def test_logic_variable():
 def test_occurs_check():
     store = rt.BuiltInStore()
     x = store.fresh('x')
-    assert not x.occurs_check(x)
+    assert x.occurs_check(x)
     assert x.occurs_check((x,))
