@@ -131,7 +131,12 @@ def gen_attribute(value: Expression, *attrs: str) -> ast.Attribute:
     return to_return
 
 
-def gen_not(expr: Expression) -> ast.UnaryOp:
+def gen_not(expr: Expression) -> Expression:
+
+    if isinstance(expr, ast.Constant) and expr.value in {True, False}:
+        print("Simplifying 'not' node.")
+        return gen_constant(not expr.value)
+
     return ast.UnaryOp(
         op=ast.Not(),
         operand=expr
@@ -140,21 +145,22 @@ def gen_not(expr: Expression) -> ast.UnaryOp:
 
 def gen_raise_on_false(
         exception_ast: Expression,
-        *condition_asts: Expression
-) -> Statement:
+        *condition_asts: Expression,
+        before_raise=[]
+) -> List[Statement]:
     """Generates statement of the form
         `if not C: raise E`
     """
-    return ast.If(
-        test=ast.UnaryOp(
-            op=ast.Not(),
-            operand=ast.BoolOp(op=ast.And(), values=condition_asts) if len(condition_asts) > 1 else condition_asts[0]
+    return gen_if(
+        gen_not(
+            ast.BoolOp(op=ast.And(), values=condition_asts) if len(condition_asts) > 1 else condition_asts[0]
         ),
-        orelse=[],
-        body=[ast.Raise(
+        *before_raise,
+        ast.Raise(
             exc=exception_ast,
             cause=None
-        )]
+        ),
+        orelse=[],
     )
 
 
@@ -195,6 +201,18 @@ def gen_activate_call(index_var: str, symbol: str, arity: int, *args: Expression
         gen_attribute(gen_self(), f'__activate_{symbol}_{arity}'),
         gen_name(index_var),
         *args
+    ))
+
+
+def gen_set_save_point():
+    return gen_expr(gen_call(
+        gen_attribute(gen_self(), "set_save_point")
+    ))
+
+
+def gen_drop_save_point():
+    return gen_expr(gen_call(
+        gen_attribute(gen_self(), "drop_save_point")
     ))
 
 
@@ -253,14 +271,23 @@ def gen_if(
         test_ast: Expression,
         *body: Statement,
         orelse: List[Statement] = None
-) -> Statement:
+) -> List[Statement]:
     if orelse is None:
         orelse = []
-    return ast.If(
-        test=test_ast,
-        body=list(body),
-        orelse=orelse
-    )
+
+    if isinstance(test_ast, ast.Constant) and test_ast.value in {True, False}:
+        if test_ast.value:
+            return list(body)
+        else:
+            return orelse
+
+    return [
+        ast.If(
+            test=test_ast,
+            body=list(body),
+            orelse=orelse
+        )
+    ]
 
 
 def gen_return(value_ast: Expression) -> Statement:
@@ -524,7 +551,7 @@ def compile_unify(
         rhs: Term,
         known_variables: Dict[str, Expression],
         in_guard: bool = False
-) -> Statement:
+) -> List[Statement]:
     """Compiles the '=' builtin constraint"""
     var_names = vars(lhs).union(vars(rhs))
     if not all(v in known_variables for v in var_names):
@@ -537,7 +564,8 @@ def compile_unify(
 
     return gen_raise_on_false(
         gen_call(exception_name),
-        gen_call("unify", lhs_ast, rhs_ast)
+        gen_call("unify", lhs_ast, rhs_ast),
+        before_raise=[] if in_guard else [gen_commit()]
     )
 
 
@@ -546,7 +574,7 @@ def compile_is(
         rhs: Term,
         known_variables: Dict[str, Expression],
         in_guard: bool = False
-) -> Statement:
+) -> List[Statement]:
     """Compiles the 'is' builtin constraint where
 
         X is Y
@@ -575,7 +603,8 @@ def compile_is(
                 gen_is(lhs_ast, rhs_ast)
             ),
             gen_is(lhs_ast, rhs_ast)
-        )
+        ),
+        before_raise=[] if in_guard else [gen_commit()]
     )
 
 
@@ -585,7 +614,7 @@ def compile_comparisons(
         rhs: Term,
         known_variables: Dict[str, Expression],
         in_guard=False
-) -> Statement:
+) -> List[Statement]:
     """Compiles a comparison constraint, i.e. one in {'==', '!=', '<', '<=', '>', '>='}"""
     var_names = vars(lhs).union(vars(rhs))
     if not all(v in known_variables for v in var_names):
@@ -602,7 +631,8 @@ def compile_comparisons(
             gen_call("is_bound", lhs_ast),
             gen_call("is_bound", rhs_ast),
             gen_comparison(op, gen_call("get_value", lhs_ast), gen_call("get_value", rhs_ast))
-        )
+        ),
+        before_raise=[] if in_guard else [gen_commit()]
     )
 
 
@@ -610,7 +640,7 @@ def compile_is_bound(
         term: Term,
         known_variables: Dict[str, Expression],
         in_guard: bool = False
-) -> Statement:
+) -> List[Statement]:
     """Compiles the 'is_bound' builtin constraint"""
     var_names = vars(term)
     if not all(v in known_variables for v in var_names):
@@ -622,7 +652,8 @@ def compile_is_bound(
 
     return gen_raise_on_false(
         gen_call(exception_name),
-        gen_call("is_bound", term_ast)
+        gen_call("is_bound", term_ast),
+        before_raise=[] if in_guard else [gen_commit()]
     )
 
 
@@ -630,7 +661,7 @@ def compile_not(
         term: Term,
         known_variables: Dict[str, Expression],
         in_guard: bool = False
-) -> Statement:
+) -> List[Statement]:
     """Compile the 'not' builtin constraint/operator"""
     var_names = vars(term)
     if not all(v in known_variables for v in var_names):
@@ -642,7 +673,8 @@ def compile_not(
 
     return gen_raise_on_false(
         gen_call(exception_name),
-        gen_not(term_ast)
+        gen_not(term_ast),
+        before_raise=[] if in_guard else [gen_commit()]
     )
 
 
@@ -652,7 +684,7 @@ def compile_logic_operator(
         right: Term,
         known_variables: Dict[str, Expression],
         in_guard: bool = False
-) -> Statement:
+) -> List[Statement]:
     """Compiles 'and' and 'or' builtin constraints"""
     var_names = vars(left).union(vars(right))
     if not all(v in known_variables for v in var_names):
@@ -669,7 +701,8 @@ def compile_logic_operator(
     }
     return gen_raise_on_false(
         gen_call(exception_name),
-        ops[symbol](left_ast, right_ast)
+        ops[symbol](left_ast, right_ast),
+        before_raise=[] if in_guard else [gen_commit()]
     )
 
 
@@ -677,7 +710,7 @@ def compile_misc_builtin(
         term: Term,
         known_variables: Dict[str, Expression],
         in_guard: bool = False
-) -> Statement:
+) -> List[Statement]:
     """Compiles any other function call as a constraint"""
     var_names = vars(term)
     if not all(v in known_variables for v in var_names):
@@ -694,7 +727,8 @@ def compile_misc_builtin(
 
     return gen_raise_on_false(
         gen_call(exception_name),
-        term_ast
+        term_ast,
+        before_raise=[] if in_guard else [gen_commit()]
     )
 
 
@@ -760,25 +794,20 @@ def compile_rule_body(
             if f"{body_constraint.symbol}/{body_constraint.arity}" in known_chr_constraints:
                 constraints += compile_chr_constraint(name_gen, body_constraint, known_variables)
             elif body_constraint.symbol == "=":
-                constraints.append(compile_unify(body_constraint.params[0], body_constraint.params[1], known_variables))
+                constraints += compile_unify(body_constraint.params[0], body_constraint.params[1], known_variables)
                 constraints.append(gen_commit())
             elif body_constraint.symbol == "is":
-                constraints.append(
-                    compile_is(body_constraint.params[0], body_constraint.params[1], known_variables)
-                )
+                constraints += compile_is(body_constraint.params[0], body_constraint.params[1], known_variables)
             elif body_constraint.symbol == "is_bound":
-                constraints.append(
-                    compile_is_bound(body_constraint.params[0], known_variables)
-                )
+                constraints += compile_is_bound(body_constraint.params[0], known_variables)
             elif body_constraint.symbol in BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS:
-                constraints.append(
-                    compile_comparisons(
+                constraints += compile_comparisons(
                         body_constraint.symbol,
                         body_constraint.params[0],
                         body_constraint.params[1],
                         known_variables
                     )
-                )
+
             elif body_constraint.symbol == "fresh":
                 constraints.append(compile_fresh_constraint(
                     name_gen,
@@ -787,40 +816,32 @@ def compile_rule_body(
                 ))
 
             elif body_constraint.symbol == "not":
-                constraints.append(
-                    compile_not(body_constraint.params[0], known_variables)
-                )
+                constraints += compile_not(body_constraint.params[0], known_variables)
 
             elif body_constraint.symbol in {"and", "or"}:
-                constraints.append(
-                    compile_logic_operator(
+                constraints += compile_logic_operator(
                         body_constraint.symbol,
                         body_constraint.params[0],
                         body_constraint.params[1],
                         known_variables
                     )
-                )
             else:
-                constraints.append(
-                    compile_misc_builtin(body_constraint, known_variables)
-                )
+                constraints += compile_misc_builtin(body_constraint, known_variables)
         else:
-            constraints.append(
-                compile_misc_builtin(body_constraint, known_variables)
-            )
+            constraints += compile_misc_builtin(body_constraint, known_variables)
 
-    finalize = gen_return(gen_constant(True))
+    finalize = [gen_return(gen_constant(True))]
 
     if "id_0" not in killed_constraints:
         finalize = gen_if(
             gen_not(gen_alive_call("id_0")),
-            finalize
+            *finalize
         )
 
     return [
         *kills,
         *constraints,
-        finalize
+        *finalize
     ]
 
 
@@ -872,7 +893,7 @@ def compile_guard_constraint(
         name_gen: NameGenerator,
         constraint: Term,
         known_variables: Dict[str, Expression]
-) -> Statement:
+) -> List[Statement]:
     symbol = constraint.symbol
     params = constraint.params
     if symbol == "fresh":
@@ -880,7 +901,7 @@ def compile_guard_constraint(
         if not isinstance(var, Var):
             raise CHRCompilationError(f"{var} is not an instance of {Var}")
 
-        return compile_fresh_constraint(name_gen, var.name, known_variables)
+        return [compile_fresh_constraint(name_gen, var.name, known_variables)]
 
     if symbol == "=":
         return compile_unify(params[0], params[1], known_variables, in_guard=True)
@@ -919,8 +940,9 @@ def compile_guarded_body(
         history_entry: Tuple[Expression, ...]
 ) -> Statement:
     guard_statements = [
-        compile_guard_constraint(name_gen, gc, known_variables)
+        stmt
         for gc in guard_constraints
+        for stmt in compile_guard_constraint(name_gen, gc, known_variables)
     ]
 
     if killed_constraints:
@@ -938,7 +960,7 @@ def compile_guarded_body(
     else:
         return gen_guard_try_catch(
             *guard_statements,
-            gen_if(
+            *gen_if(
                 gen_not(gen_call(gen_attribute(gen_self(), "chr", "in_history"), *history_entry)),
                 gen_expr(gen_call(gen_attribute(gen_self(), "chr", "add_to_history"), *history_entry)),
                 gen_commit(),
@@ -962,7 +984,7 @@ def compile_alive_checks(
         known_variables: Dict[str, Expression],
         guard_constraints: List[Term],
         body_constraints: List[Term]
-) -> Statement:
+) -> List[Statement]:
     return gen_if(
         gen_and(*(gen_alive_call(f"id_{i}") for i in range(0, total_head_constraints))),
         compile_guarded_body(
@@ -992,7 +1014,7 @@ def compile_match_loops(
         matchings: List[Term],
         guard_constraints: List[Term],
         body_constraints: List[Term]
-) -> Statement:
+) -> List[Statement]:
     if not head_constraints:
         if matchings:
             raise CHRCompilationError(f"There are uncompiled matchings: {matchings}")
@@ -1061,16 +1083,16 @@ def compile_match_loops(
     if not current.kept:
         killed_constraints.add(index_var_name)
 
-    return gen_for_loop(
+    return [gen_for_loop(
         gen_tuple(index_var_ast, c_var_ast),
         gen_call(
             gen_attribute(gen_self(), "chr", "get_iterator"),
             fix=gen_constant(True),
             symbol=gen_constant(symbol)
         ),
-        gen_if(
+        *gen_if(
             gen_and(*checks, *matching_condition) if matching_condition or checks else gen_constant(True),
-            compile_match_loops(
+            *compile_match_loops(
                 rule_name,
                 name_gen,
                 current_head_constraint + 1,
@@ -1084,7 +1106,7 @@ def compile_match_loops(
                 body_constraints
             )
         )
-    )
+    )]
 
 
 def compile_occurrence(
@@ -1138,11 +1160,11 @@ def compile_occurrence(
             vararg=None,
             kwarg=None
         ),
-        gen_if(
+        *(gen_if(
             gen_not(gen_and(*matching_condition)),
             gen_return(gen_constant(False))
-        ) if matching_condition else gen_pass(),
-        compile_match_loops(
+        ) if matching_condition else [gen_pass()]),
+        *compile_match_loops(
             occurrence_scheme.rule_name,
             NameGenerator(),
             1,
@@ -1175,8 +1197,9 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
         ]
 
         occurrence_tries: List[Statement] = [
-            gen_if(proc_call, gen_return(gen_constant(True)))
+            stmt
             for proc_call in occurrence_calls
+            for stmt in gen_if(proc_call, gen_return(gen_constant(True)))
         ]
 
         delay_checks = [gen_not(gen_name("delayed"))]
@@ -1196,7 +1219,7 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
                 for i in range(0, arity)
             )))
 
-        delay_call: Statement = gen_if(
+        delay_call: List[Statement] = gen_if(
             gen_and(*delay_checks),
             gen_expr(gen_call(
                 gen_attribute(gen_self(), "builtin", "delay"),
@@ -1211,7 +1234,7 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
         )
         body = [
             *occurrence_tries,
-            delay_call,
+            *delay_call,
             gen_return(gen_constant(False))
         ]
 
@@ -1242,7 +1265,9 @@ def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
         raise CHRCompilationError(f"symbol {symbol} hast no valid arities")
 
     arity_checks = [
-        gen_if(
+        stmt
+        for arity in arities
+        for stmt in gen_if(
             gen_comparison(
                 "==",
                 gen_call("len", gen_name("args")),
@@ -1268,7 +1293,6 @@ def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
                 )
             )
         )
-        for arity in arities
     ]
 
     wrong_arity_default = gen_raise(
@@ -1287,7 +1311,9 @@ def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
             defaults=[],
             kwarg=None,
         ),
+        gen_set_save_point(),
         *arity_checks,
+        gen_drop_save_point(),
         wrong_arity_default
     )
 

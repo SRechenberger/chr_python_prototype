@@ -117,15 +117,16 @@ def test_leq_solver():
     assert ('leq/2', z, y) in dump
 
 
+def fib(n, r1=1, r0=0):
+    if n == 0:
+        return r0
+    if n == 1:
+        return r1
+    return fib(n - 1, r1 + r0, r1)
+
+
 def test_fibonacci():
     from test_files.fibonacci import Fibonacci
-
-    def fib(n, r1=1, r0=0):
-        if n == 0:
-            return r0
-        if n == 1:
-            return r1
-        return fib(n - 1, r1 + r0, r1)
 
     solver = Fibonacci()
 
@@ -134,6 +135,28 @@ def test_fibonacci():
         r = solver.fresh_var()
         solver.read(r)
         assert r == fib(n)
+
+
+def test_backtrack():
+    from test_files.fibonacci import Fibonacci
+
+    solver = Fibonacci()
+
+    r = solver.fresh_var()
+
+    solver.fib(10)
+    solver.read(r)
+
+    assert r == fib(10)
+
+    solver.backtrack()
+    assert not r.is_bound()
+    solver.backtrack()
+    assert not solver.dump_chr_store()
+    solver.fib(11)
+    solver.read(r)
+    assert r == fib(11)
+
 
 
 def test_match():

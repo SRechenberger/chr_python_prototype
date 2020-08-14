@@ -12,10 +12,6 @@ class UndefinedConstraintError(Exception):
         return str(self)
 
 
-class InconsistentBuiltinStoreError(Exception):
-    pass
-
-
 class CHRFalse(Exception):
     def __init__(self, *messages):
         self.messages = messages
@@ -33,15 +29,37 @@ class CHRStore:
         self.alive_set = {}
         self.constraints = {}
         self.history = set()
+        self.trail = [[]]
 
     def new(self):
-        id = self.next_id
+        index = self.next_id
         self.next_id += 1
-        self.alive_set[id] = True
-        return id
+        self.alive_set[index] = True
+        return index
+
+    def set_save_point(self):
+        self.trail.append([])
+
+    def drop_save_point(self):
+        self.trail.pop()
+
+    def backtrack(self):
+        save_point = self.trail.pop()
+        while save_point:
+            action, value = save_point.pop()
+            if action == "add_to_history":
+                self.history.remove(value)
+            elif action == "constraint_insert":
+                del self.constraints[value]
+                del self.alive_set[value]
+            elif action == "constraint_delete":
+                self.constraints[value[0]] = value[1]
+                self.alive_set[value[0]] = True
 
     def add_to_history(self, rule_name, *ids):
-        self.history.add((rule_name, ids))
+        history_entry = rule_name, ids
+        self.history.add(history_entry)
+        self.trail[-1].append(("add_to_history", history_entry))
 
     def in_history(self, rule_name, *ids):
         return (rule_name, ids) in self.history
@@ -52,20 +70,22 @@ class CHRStore:
         else:
             raise Exception(f'id {id} unknown')
 
-    def insert(self, constraint, id):
-        if id in self.constraints:
+    def insert(self, constraint, index):
+        if index in self.constraints:
             raise Exception(
-                f'constraint with id {id} already set to {self.constraints[id]}'
+                f'constraint with id {index} already set to {self.constraints[index]}'
             )
         else:
-            self.constraints[id] = constraint
+            self.constraints[index] = constraint
+            self.trail[-1].append(("constraint_insert", index))
 
-    def delete(self, id):
-        if id in self.constraints:
-            del self.constraints[id]
-            self.alive_set[id] = False
+    def delete(self, index):
+        if index in self.constraints:
+            self.trail[-1].append(("constraint_delete", (index, self.constraints[index])))
+            del self.constraints[index]
+            self.alive_set[index] = False
         else:
-            raise Exception(f'constraint with id {id} unknown')
+            raise Exception(f'constraint with id {index} unknown')
 
     def get_iterator(self, symbol=None, fix=False):
         it = self.constraints.items()
@@ -173,17 +193,39 @@ class BuiltInStore:
         self.delayed_calls = {}
         self.next_delay_id = 0
         self.called_delayed_closures = set()
+        self.trail = []
+
+    def set_save_point(self):
+        self.trail.append([])
+
+    def drop_save_point(self):
+        self.trail.pop()
 
     def commit_recent_bindings(self):
         """
         Commits recent bindings, i.e. deletes the list of bindings.
-        :return: None
         """
 
+        self.trail[-1] += self.recent_bindings
         recent_bindings = self.recent_bindings
         self.recent_bindings = []
         for _, index in recent_bindings:
             self.call_delayed_closures(index)
+
+    def backtrack(self):
+        """
+        Backtracks one savepoint
+        """
+        save_point = self.trail.pop()
+        print("REVERTING:", save_point)
+
+        while save_point:
+            t, v = save_point.pop()
+            assert t in {"union", "value"}
+            if t == "union":
+                self.union_find[v] = v
+            if t == "value":
+                del self.value_bindings[v]
 
     def reset_recent_bindings(self):
         """
@@ -477,3 +519,22 @@ class CHRSolver:
 
     def dump_chr_store(self):
         return self.chr.dump()
+
+    def set_save_point(self):
+        self.builtin.set_save_point()
+        self.chr.set_save_point()
+
+    def drop_save_point(self):
+        self.builtin.drop_save_point()
+        self.chr.drop_save_point()
+
+    def backtrack(self):
+        self.builtin.backtrack()
+        self.chr.backtrack()
+
+    def unify(self, a, b):
+        self.set_save_point()
+        if not unify(a, b):
+            self.builtin.commit_recent_bindings()
+            raise CHRFalse()
+
