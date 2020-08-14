@@ -104,6 +104,16 @@ class NameGenerator:
         return new_name
 
 
+def dead_code_elimination(stmts: List[Statement]) -> List[Statement]:
+    cleaned = []
+    for stmt in stmts:
+        cleaned.append(stmt)
+        if isinstance(stmt, (ast.Return, ast.Raise)):
+            break
+
+    return cleaned
+
+
 def gen_call(
         func: Union[str, Expression],
         *args: Expression,
@@ -838,11 +848,11 @@ def compile_rule_body(
             *finalize
         )
 
-    return [
+    return dead_code_elimination([
         *kills,
         *constraints,
         *finalize
-    ]
+    ])
 
 
 def compile_match(
@@ -959,7 +969,7 @@ def compile_guarded_body(
         )
     else:
         return gen_guard_try_catch(
-            *guard_statements,
+            *dead_code_elimination(guard_statements),
             *gen_if(
                 gen_not(gen_call(gen_attribute(gen_self(), "chr", "in_history"), *history_entry)),
                 gen_expr(gen_call(gen_attribute(gen_self(), "chr", "add_to_history"), *history_entry)),
