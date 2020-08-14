@@ -1,8 +1,10 @@
 from setuptools import setup
 
+from chr import __version__
+
 setup(
     name='chr-python',
-    version='20.0.1',
+    version=__version__,
     packages=['chr', 'test', 'test_files'],
     url='',
     license='MIT',

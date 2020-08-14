@@ -1,5 +1,5 @@
 import ast
-from typing import List, Dict, Any, Tuple, Set, Union, Callable
+from typing import List, Dict, Any, Tuple, Set, Union, Callable, Optional
 
 from ast_decompiler import decompile
 from pprintast import pprintast
@@ -394,16 +394,25 @@ def gen_func_def(
         name: str,
         arguments: ast.arguments,
         *body: Statement,
-        decorator_list: List[Expression] = None
+        decorator_list: List[Expression] = None,
+        docstring: Optional[str] = None
 ) -> Statement:
     if decorator_list is None:
         decorator_list = []
+
+    func_body = [*body]
+    if docstring:
+        func_body = [
+            gen_expr(gen_constant(docstring)),
+            *body
+        ]
+
     return ast.FunctionDef(
         name=name,
         args=arguments,
-        body=list(body),
+        body=func_body,
         decorator_list=decorator_list,
-        defaults=[]
+        defaults=[],
     )
 
 
@@ -914,11 +923,9 @@ def compile_guarded_body(
         for gc in guard_constraints
     ]
 
-    return gen_guard_try_catch(
-        *guard_statements,
-        gen_if(
-            gen_not(gen_call(gen_attribute(gen_self(), "chr", "in_history"), *history_entry)),
-            gen_expr(gen_call(gen_attribute(gen_self(), "chr", "add_to_history"), *history_entry)),
+    if killed_constraints:
+        return gen_guard_try_catch(
+            *guard_statements,
             gen_commit(),
             *compile_rule_body(
                 name_gen,
@@ -926,9 +933,24 @@ def compile_guarded_body(
                 known_chr_constraints,
                 known_variables,
                 body_constraints
-            ),
+            )
         )
-    )
+    else:
+        return gen_guard_try_catch(
+            *guard_statements,
+            gen_if(
+                gen_not(gen_call(gen_attribute(gen_self(), "chr", "in_history"), *history_entry)),
+                gen_expr(gen_call(gen_attribute(gen_self(), "chr", "add_to_history"), *history_entry)),
+                gen_commit(),
+                *compile_rule_body(
+                    name_gen,
+                    killed_constraints,
+                    known_chr_constraints,
+                    known_variables,
+                    body_constraints
+                ),
+            )
+        )
 
 
 def compile_alive_checks(
