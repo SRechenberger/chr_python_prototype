@@ -620,7 +620,7 @@ def compile_is_bound(
 def compile_not(
         term: Term,
         known_variables: Dict[str, Expression],
-        in_guard: bool=False
+        in_guard: bool = False
 ) -> Statement:
     """Compile the 'not' builtin constraint/operator"""
     var_names = vars(term)
@@ -642,7 +642,7 @@ def compile_logic_operator(
         left: Term,
         right: Term,
         known_variables: Dict[str, Expression],
-        in_guard: bool=False
+        in_guard: bool = False
 ) -> Statement:
     """Compiles 'and' and 'or' builtin constraints"""
     var_names = vars(left).union(vars(right))

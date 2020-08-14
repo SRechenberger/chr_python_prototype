@@ -1,4 +1,4 @@
-from typing import Any, Union, Optional, Callable
+from typing import Any, Optional, Callable
 
 
 class UndefinedConstraintError(Exception):

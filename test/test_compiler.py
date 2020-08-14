@@ -374,7 +374,3 @@ def test_or():
 
     with pytest.raises(CHRFalse):
         solver.test2(13)
-
-
-
-
