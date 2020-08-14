@@ -374,3 +374,30 @@ def test_or():
 
     with pytest.raises(CHRFalse):
         solver.test2(13)
+
+
+def test_propagation_history():
+    from test_files.propagation_history_test import PropagationTest
+
+    solver = PropagationTest()
+
+    solver.a()
+
+    dump = solver.dump_chr_store()
+    assert len(dump) == 2
+    assert ("b/0",) in dump
+    assert ("a/0",) in dump
+
+    solver = PropagationTest()
+
+    solver.c()
+    dump = solver.dump_chr_store()
+    assert len(dump) == 1
+    assert ("c/0",) in dump
+
+    solver.start()
+    dump = solver.dump_chr_store()
+    assert len(dump) == 2
+    assert ("start/0",) in dump
+    assert ("b/0",) in dump
+    assert ("c/0",) not in dump

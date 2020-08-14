@@ -1,0 +1,7 @@
+class PropagationTest.
+
+constraints a/0, b/0, c/0, start/0.
+
+a ==> b.
+
+start \ c <=> b.
