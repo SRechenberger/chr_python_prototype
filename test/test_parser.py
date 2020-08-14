@@ -63,7 +63,11 @@ def test_constraint():
         ])),
         ("$X = 1", Term("=", params=[Var("X"), 1])),
         ("0 == 1", Term("==", params=[0, 1])),
-        ("0 <= 1", Term("<=", params=[0, 1]))
+        ("0 <= 1", Term("<=", params=[0, 1])),
+        ("$X == 1 or $X == 3", Term("or", params=[
+            Term("==", params=[Var("X"), 1]),
+            Term("==", params=[Var("X"), 3])
+        ]))
     ]
 
     for input, expected_output in test_cases:

@@ -1,5 +1,7 @@
 class OrTest.
 
-constraints test/1, passed/1.
+constraints test/1, test2/1, passed/1, failed/1.
 
 test($X) <=> $X == 1 or $X == 3 | passed($X).
+test($X) <=> $X != 1 and $X != 3 | failed($X).
+test2($X) <=> $X == 42 or $X % 7 == 0.

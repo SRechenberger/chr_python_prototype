@@ -2,6 +2,7 @@ import ast
 from typing import List, Dict, Any, Tuple, Set, Union, Callable
 
 from ast_decompiler import decompile
+from pprintast import pprintast
 
 from chr.ast import *
 from chr.parser import chr_parse
@@ -619,7 +620,7 @@ def compile_is_bound(
 def compile_not(
         term: Term,
         known_variables: Dict[str, Expression],
-        in_guard: bool = False
+        in_guard: bool=False
 ) -> Statement:
     """Compile the 'not' builtin constraint/operator"""
     var_names = vars(term)
@@ -633,6 +634,33 @@ def compile_not(
     return gen_raise_on_false(
         gen_call(exception_name),
         gen_not(term_ast)
+    )
+
+
+def compile_logic_operator(
+        symbol: str,
+        left: Term,
+        right: Term,
+        known_variables: Dict[str, Expression],
+        in_guard: bool=False
+) -> Statement:
+    """Compiles 'and' and 'or' builtin constraints"""
+    var_names = vars(left).union(vars(right))
+    if not all(v in known_variables for v in var_names):
+        raise CHRCompilationError(f"Variables {var_names - set(known_variables.keys())} not known.")
+
+    exception_name = "CHRGuardFail" if in_guard else "CHRFalse"
+
+    left_ast = compile_term(left, known_variables)
+    right_ast = compile_term(right, known_variables)
+
+    ops = {
+        "and": gen_and,
+        "or": gen_or
+    }
+    return gen_raise_on_false(
+        gen_call(exception_name),
+        ops[symbol](left_ast, right_ast)
     )
 
 
@@ -753,6 +781,16 @@ def compile_rule_body(
                 constraints.append(
                     compile_not(body_constraint.params[0], known_variables)
                 )
+
+            elif body_constraint.symbol in {"and", "or"}:
+                constraints.append(
+                    compile_logic_operator(
+                        body_constraint.symbol,
+                        body_constraint.params[0],
+                        body_constraint.params[1],
+                        known_variables
+                    )
+                )
             else:
                 constraints.append(
                     compile_misc_builtin(body_constraint, known_variables)
@@ -846,6 +884,9 @@ def compile_guard_constraint(
 
     if symbol == "not":
         return compile_not(params[0], known_variables, in_guard=True)
+
+    if symbol in {"or", "and"}:
+        return compile_logic_operator(symbol, params[0], params[1], known_variables, in_guard=True)
 
     if symbol in BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS:
         return compile_comparisons(symbol, params[0], params[1], known_variables, in_guard=True)
@@ -1099,52 +1140,63 @@ def compile_occurrence(
 def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.FunctionDef]) -> Statement:
     proc_name: str = f"__activate_{symbol}_{arity}"
 
-    occurrence_calls: List[Expression] = [
-        gen_call(
-            gen_attribute(gen_self(), proc.name),
-            gen_name("index"),
-            gen_starred(gen_name("args"))
-        )
-        for proc in occurrences
-    ]
-
-    occurrence_tries: List[Statement] = [
-        gen_if(proc_call, gen_return(gen_constant(True)))
-        for proc_call in occurrence_calls
-    ]
-
-    args_ast = gen_name("args")
-
-    delay_checks = [gen_not(gen_name("delayed"))]
-    if arity > 0:
-        delay_checks.append(gen_or(*(
-            gen_and(
-                gen_call(
-                    "isinstance",
-                    gen_subscript_index(args_ast, gen_constant(i)),
-                    gen_name("LogicVariable")
-                ),
-                gen_not(gen_call(
-                    "is_bound",
-                    gen_subscript_index(args_ast, gen_constant(i))
-                ))
-            )
-            for i in range(0, arity)
-        )))
-
-    delay_call: Statement = gen_if(
-        gen_and(*delay_checks),
-        gen_expr(gen_call(
-            gen_attribute(gen_self(), "builtin", "delay"),
-            gen_lambda(gen_call(
-                gen_attribute(gen_self(), proc_name),
+    if occurrences:
+        occurrence_calls: List[Expression] = [
+            gen_call(
+                gen_attribute(gen_self(), proc.name),
                 gen_name("index"),
+                gen_starred(gen_name("args"))
+            )
+            for proc in occurrences
+        ]
+
+        occurrence_tries: List[Statement] = [
+            gen_if(proc_call, gen_return(gen_constant(True)))
+            for proc_call in occurrence_calls
+        ]
+
+        args_ast = gen_name("args")
+
+        delay_checks = [gen_not(gen_name("delayed"))]
+        if arity > 0:
+            delay_checks.append(gen_or(*(
+                gen_and(
+                    gen_call(
+                        "isinstance",
+                        gen_subscript_index(args_ast, gen_constant(i)),
+                        gen_name("LogicVariable")
+                    ),
+                    gen_not(gen_call(
+                        "is_bound",
+                        gen_subscript_index(args_ast, gen_constant(i))
+                    ))
+                )
+                for i in range(0, arity)
+            )))
+
+        delay_call: Statement = gen_if(
+            gen_and(*delay_checks),
+            gen_expr(gen_call(
+                gen_attribute(gen_self(), "builtin", "delay"),
+                gen_lambda(gen_call(
+                    gen_attribute(gen_self(), proc_name),
+                    gen_name("index"),
+                    gen_starred(args_ast),
+                    delayed=gen_constant(True)
+                )),
                 gen_starred(args_ast),
-                delayed=gen_constant(True)
-            )),
-            gen_starred(args_ast),
-        ))
-    )
+            ))
+        )
+        body = [
+            *occurrence_tries,
+            delay_call,
+            gen_return(gen_constant(False))
+        ]
+
+    else:
+        body = [
+            gen_return(gen_constant(True))
+        ]
 
     return gen_func_def(
         proc_name,
@@ -1159,9 +1211,7 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
             defaults=[],
             kwarg=None
         ),
-        *occurrence_tries,
-        delay_call,
-        gen_return(gen_constant(False))
+        *body
     )
 
 
@@ -1307,9 +1357,9 @@ def chr_compile_source(source: str, verbose: bool = False) -> str:
         print("done.")
         print("Compiling to python ast...", end=" ")
     python_ast = compile_omega_r_program(chr_ast.class_name, chr_ast)
-    # pprintast(python_ast)
     if verbose:
         print("done.")
+        pprintast(python_ast)
         print("Generating python code...", end=" ")
     python_code = decompile(python_ast)
     if verbose:

@@ -339,7 +339,42 @@ def test_condition_simplifier():
     with pytest.raises(UndefinedConstraintError):
         solver.simplify(test_ast3)
 
+
 def test_or():
     from test_files.or_test import OrTest
+
+    solver = OrTest()
+
+    solver.test(1)
+    dump = solver.dump_chr_store()
+    assert len(dump) == 1
+    assert ("passed/1", 1) in dump
+
+    solver.test(3)
+    dump = solver.dump_chr_store()
+    assert len(dump) == 2
+    assert ("passed/1", 3) in dump
+
+    solver.test(2)
+    dump = solver.dump_chr_store()
+    assert len(dump) == 3
+    assert ("failed/1", 2) in dump
+
+    solver.test2(42)
+    dump = solver.dump_chr_store()
+    print("DUMP:", dump)
+    assert len(dump) == 3
+    assert ("test2/1", 42) not in dump
+
+    solver.test2(14)
+    dump = solver.dump_chr_store()
+    print("DUMP:", dump)
+    assert len(dump) == 3
+    assert ("test2/1", 14) not in dump
+
+    with pytest.raises(CHRFalse):
+        solver.test2(13)
+
+
 
 
