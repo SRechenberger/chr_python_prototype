@@ -1163,11 +1163,13 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
     proc_name: str = f"__activate_{symbol}_{arity}"
 
     if occurrences:
+        args_ast = [gen_starred(gen_name("args"))] if arity > 0 else []
         occurrence_calls: List[Expression] = [
+
             gen_call(
                 gen_attribute(gen_self(), proc.name),
                 gen_name("index"),
-                gen_starred(gen_name("args"))
+                *args_ast
             )
             for proc in occurrences
         ]
@@ -1177,20 +1179,18 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
             for proc_call in occurrence_calls
         ]
 
-        args_ast = gen_name("args")
-
         delay_checks = [gen_not(gen_name("delayed"))]
         if arity > 0:
             delay_checks.append(gen_or(*(
                 gen_and(
                     gen_call(
                         "isinstance",
-                        gen_subscript_index(args_ast, gen_constant(i)),
+                        gen_subscript_index(gen_name("args"), gen_constant(i)),
                         gen_name("LogicVariable")
                     ),
                     gen_not(gen_call(
                         "is_bound",
-                        gen_subscript_index(args_ast, gen_constant(i))
+                        gen_subscript_index(gen_name("args"), gen_constant(i))
                     ))
                 )
                 for i in range(0, arity)
@@ -1203,10 +1203,10 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
                 gen_lambda(gen_call(
                     gen_attribute(gen_self(), proc_name),
                     gen_name("index"),
-                    gen_starred(args_ast),
+                    *args_ast,
                     delayed=gen_constant(True)
                 )),
-                gen_starred(args_ast),
+                *args_ast,
             ))
         )
         body = [
@@ -1227,7 +1227,7 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
                 ast.arg(arg="self", annotation=None),
                 ast.arg(arg="index", annotation=None)
             ],
-            vararg=ast.arg(arg="args", annotation=None),
+            vararg=ast.arg(arg="args", annotation=None) if arity > 0 else None,
             kwonlyargs=[ast.arg(arg="delayed", annotation=None)],
             kw_defaults=[gen_constant(False)],
             defaults=[],
@@ -1238,7 +1238,6 @@ def compile_activate_procedure(symbol: str, arity: int, occurrences: List[ast.Fu
 
 
 def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
-    arity_checks: List[Statement] = [gen_pass()]
     if not arities:
         raise CHRCompilationError(f"symbol {symbol} hast no valid arities")
 
@@ -1263,6 +1262,9 @@ def compile_public_procedure(symbol: str, arities: List[int]) -> Statement:
                     gen_attribute(gen_self(), f"__activate_{symbol}_{arity}"),
                     gen_name("new_id"),
                     gen_starred(gen_name("args"))
+                ) if arity > 0 else gen_call(
+                    gen_attribute(gen_self(), f"__activate_{symbol}_{arity}"),
+                    gen_name("new_id"),
                 )
             )
         )
