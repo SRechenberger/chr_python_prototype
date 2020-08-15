@@ -328,7 +328,9 @@ BUILTIN_COMPARISON_OPERATOR_TRANSLATIONS: Dict[str, Callable[[], CmpOp]] = {
     ">": ast.Gt,
     ">=": ast.GtE,
     "is": ast.Is,
-    "in": ast.In
+    "in": ast.In,
+    "not in": ast.NotIn,
+    "is not": ast.IsNot
 }
 
 BUILTIN_ARITH_OPERATOR_TRANSLATION: Dict[str, Callable[[], Operator]] = {

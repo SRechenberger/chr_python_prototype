@@ -158,7 +158,6 @@ def test_backtrack():
     assert r == fib(11)
 
 
-
 def test_match():
     from test_files.match_solver import MatchTest
 
@@ -424,3 +423,44 @@ def test_propagation_history():
     assert ("start/0",) in dump
     assert ("b/0",) in dump
     assert ("c/0",) not in dump
+
+
+def dpll(formula, solver):
+    if not formula:
+        return True
+    clause, *formula1 = formula
+    for a, b in clause:
+        try:
+            solver.eq(a, b)
+            if dpll(formula1, solver):
+                return True
+        except CHRFalse:
+            pass
+        solver.backtrack()
+    return False
+
+
+# def test_backtrack_2():
+#     from test_files.eq_solver import EqSolver
+#
+#     solver = EqSolver()
+#
+#     x, y = solver.fresh_var(), solver.fresh_var()
+#     z, c = solver.fresh_var(), solver.fresh_var()
+#
+#     formula = [
+#         [(x, y), (x, z)],
+#         [(x, c), (z, c)],
+#         [(y, c), (z, y)]
+#     ]
+#
+#     solver.unify(x, 1)
+#     solver.unify(y, 2)
+#
+#     assert dpll(formula, solver)
+#     assert x.is_bound()
+#     assert y.is_bound()
+#     assert not z.is_bound()
+#     assert not c.is_bound()
+#     assert not solver.dump_chr_store()
+

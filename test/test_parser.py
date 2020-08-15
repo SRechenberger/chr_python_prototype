@@ -3,6 +3,9 @@ from chr.parser import *
 
 def test_term():
     test_cases = [
+        ("a not in b", Term("not in", params=[Term("a"), Term("b")])),
+        ("a is not b", Term("is not", params=[Term("a"), Term("b")])),
+        ("a in b", Term("in", params=[Term("a"), Term("b")])),
         ('{"cond": $Cond, "then": $Then, "else": $Else}',
          {"cond": Var("Cond"), "then": Var("Then"), "else": Var("Else")}),
         ("-1", Term("-", params=[1])),
